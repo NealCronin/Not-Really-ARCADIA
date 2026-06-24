@@ -99,7 +99,7 @@ class LlamaServer:
             
             # 2. Build the core command string
             cmd_parts = [f'"{arg}"' if " " in arg else arg for arg in cmd]
-            raw_cmd = " ".join(cmd_parts) + f' > "{log_path}" 2>&1'
+            raw_cmd = " ".join(cmd_parts)
             
             # 3. CRITICAL: Combine everything into a single string expression.
             # Wrapping raw_cmd in quotes ensures cmd.exe strips them and parses the contents perfectly.
