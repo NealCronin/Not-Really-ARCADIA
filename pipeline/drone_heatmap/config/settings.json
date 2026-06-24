@@ -1,0 +1,9 @@
+{
+  "DATASET_ROOT": "/Users/neal/Downloads/Train/Train",
+  "recent_dataset_paths": [
+    "/Users/neal/Documents/molmo2/",
+    "/Users/neal/Downloads/Train/Train"
+  ],
+  "AGENT_HOST": "0.0.0.0",
+  "AGENT_PORT": 8705
+}
