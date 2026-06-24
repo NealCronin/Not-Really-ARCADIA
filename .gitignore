@@ -1,1 +1,6 @@
-/test.py
+*.pt
+models/
+examples/
+.env
+*.pyc
+__pycache__/
