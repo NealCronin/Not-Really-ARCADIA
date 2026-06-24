@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drone Heatmap Mission Control</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-[#f5f5f7] text-zinc-900 antialiased min-h-screen font-sans tracking-tight">
+
+    <header class="border-b border-zinc-200 bg-white/80 backdrop-blur-xl px-6 py-3 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <span class="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_#10b981]"></span>
+                <h1 class="text-sm font-semibold text-zinc-800">Drone Target Tracking</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <a href="{% url 'config_page' %}" class="text-xs font-medium text-zinc-500 hover:text-[#0071e3] transition-colors">
+                    Settings
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        
+        <section class="bg-white p-6 rounded-2xl border border-zinc-200/80 space-y-6">
+            <div>
+                <h2 class="text-md font-semibold text-zinc-900">Mission Parameters</h2>
+                <p class="text-xs text-zinc-400 mt-0.5">Configure target tracking boundaries.</p>
+            </div>
+
+            <form id="parameters-form" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-zinc-500 mb-1.5">Dataset Directory</label>
+                    <input type="text" id="dataset_root" name="dataset_root" value="{{ default_dataset }}" class="w-full bg-[#f5f5f7] border border-zinc-200 rounded-xl px-3 py-2 text-xs font-mono text-zinc-800 focus:outline-none focus:ring-1 focus:ring-[#0071e3] focus:border-[#0071e3] transition-all">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-zinc-500 mb-1.5">Evaluation Task</label>
+                    <input type="text" id="task" name="task" value="{{ default_task }}" class="w-full bg-[#f5f5f7] border border-zinc-200 rounded-xl px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-1 focus:ring-[#0071e3] focus:border-[#0071e3] transition-all" placeholder="e.g., Find cars">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-zinc-500 mb-1.5">Segmentation Mask Target (Optional)</label>
+                    <input type="text" id="mask" name="mask" value="{{ default_mask }}" class="w-full bg-[#f5f5f7] border border-zinc-200 rounded-xl px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-1 focus:ring-[#0071e3] focus:border-[#0071e3] transition-all" placeholder="Leave empty for all tracking">
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full bg-[#0071e3] hover:bg-[#0066cc] text-white font-medium rounded-xl px-4 py-2.5 text-sm transition-colors cursor-pointer text-center block">
+                        Start Execution Feed
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <section class="lg:col-span-2 bg-white rounded-2xl border border-zinc-200/80 overflow-hidden flex flex-col min-h-[450px]">
+            <div class="border-b border-zinc-100 px-6 py-4 flex justify-between items-center bg-white">
+                <div>
+                    <h3 class="text-sm font-semibold text-zinc-900">Live Stream Monitor</h3>
+                    <p id="stream-status" class="text-xs text-zinc-400 mt-0.5">Feed idle. Awaiting configuration launch.</p>
+                </div>
+            </div>
+
+            <div class="flex-1 bg-zinc-950 flex items-center justify-center relative p-4">
+                <div id="video-placeholder" class="text-zinc-500 text-xs text-center space-y-1">
+                    <p class="font-medium text-zinc-400">No Active Stream Session Running</p>
+                    <p class="text-[11px] text-zinc-600">Submit parameters to initialize server frame synthesis loops.</p>
+                </div>
+                
+                <img id="video-viewport" src="" class="hidden max-w-full max-h-[600px] rounded-lg object-contain" alt="Live Stream Processing Capture">
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const form = document.getElementById("parameters-form");
+            const viewport = document.getElementById("video-viewport");
+            const placeholder = document.getElementById("video-placeholder");
+            const statusText = document.getElementById("stream-status");
+
+            form.addEventListener("submit", function(event) {
+                event.preventDefault();
+
+                const datasetRoot = encodeURIComponent(document.getElementById("dataset_root").value);
+                const task = encodeURIComponent(document.getElementById("task").value);
+                const mask = encodeURIComponent(document.getElementById("mask").value);
+
+                const streamUrl = `{% url 'video_stream' %}?dataset_root=${datasetRoot}&task=${task}&mask=${mask}`;
+
+                placeholder.classList.add("hidden");
+                viewport.classList.remove("hidden");
+                
+                viewport.src = streamUrl;
+                statusText.textContent = `Processing Live Analysis Feedback: "${decodeURIComponent(task)}"`;
+                statusText.classList.remove("text-zinc-400");
+                statusText.classList.add("text-[#0071e3]");
+            });
+        });
+    </script>
+</body>
+</html>
