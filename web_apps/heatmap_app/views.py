@@ -1,5 +1,5 @@
 import sys
-from pathlib import Path  # ← Added to handle filesystem paths
+from pathlib import Path  
 from django.conf import settings  # This MUST be at the absolute top!
 
 # 1. Inject code path into Python search arrays using the settings reference
@@ -17,14 +17,15 @@ from django.contrib import messages
 from main import DroneHeatmap
 
 
-def index(request):
-    """Renders the main drone controller dashboard."""
+def heatmap(request):
+    """Renders the dedicated drone tracking and heatmap analysis mission control workspace."""
     context = {
-        "default_dataset": str(settings.DRONE_DATASET_DIR), 
+        "default_dataset": str(getattr(settings, "DRONE_DATASET_DIR", "")),
         "default_task": "Find cars",
         "default_mask": ""
     }
-    return render(request, "heatmap_app/index.html", context)
+    # FIXED: Explicitly targets your dedicated app-specific template file name
+    return render(request, "heatmap_app/heatmap.html", context)
 
 
 def gen_frames(dataset_root, task, mask):

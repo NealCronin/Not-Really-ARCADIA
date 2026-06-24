@@ -1,0 +1,143 @@
+{% extends 'infrastructure_manager/base.html' %}
+
+{% block title %}Model Gallery Monitor{% endblock %}
+
+{% block models_tab_ui %}font-semibold text-[#0071e3] border-b-2 border-[#0071e3]{% endblock %}
+{% block main_width %}max-w-6xl{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+    <div class="group relative bg-white p-6 rounded-2xl border border-zinc-200/80 flex flex-col justify-between h-64 transition-all hover:border-zinc-300">
+        <div>
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2.5 select-text">
+                    <h3 class="text-sm font-semibold text-zinc-900">Visual Perception Engine</h3>
+                </div>
+                <span class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-500 border border-zinc-200/60 uppercase tracking-wider select-none">
+                    VLM • {{ config.VLM_CONFIG.mode }}
+                </span>
+            </div>
+            
+            <div class="relative mt-4 h-32 rounded-xl overflow-hidden">
+                <pre class="w-full h-full bg-zinc-950 font-mono text-[11px] text-zinc-400 p-3 overflow-hidden leading-relaxed selection:bg-zinc-700 transition-all duration-300 group-hover:blur-[2px] group-hover:opacity-30">{{ vlm_logs }}</pre>
+                
+                <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-2 bg-zinc-900/5 backdrop-blur-xs p-4">
+                    <a href="{% url 'view_terminal' model_type='vlm' %}" class="bg-zinc-900 hover:bg-zinc-800 text-white font-medium text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-center block shadow-md">View Terminal</a>
+                    <a href="{% url 'control_model' model_type='vlm' action='start' %}" class="bg-[#0071e3] hover:bg-[#0066cc] text-white text-[11px] font-medium px-3 py-1.5 rounded-md transition-colors cursor-pointer block shadow-md">Start</a>
+                    <a href="{% url 'control_model' model_type='vlm' action='stop' %}" class="bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-medium px-3 py-1.5 rounded-md transition-colors cursor-pointer block shadow-md">Stop</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex justify-between items-center mt-2 z-10">
+            <a href="http://{{ config.VLM_CONFIG.host }}:{{ config.VLM_CONFIG.port }}" target="_blank" class="text-[11px] font-medium text-[#0071e3] hover:underline tracking-tight">
+                Chat With Model ↗
+            </a>
+            <span class="font-mono text-[11px] text-zinc-400 select-all tracking-tight cursor-text">
+                {{ config.VLM_CONFIG.host }}:{{ config.VLM_CONFIG.port }}
+            </span>
+        </div>
+    </div>
+
+    <div class="group relative bg-white p-6 rounded-2xl border border-zinc-200/80 flex flex-col justify-between h-64 transition-all hover:border-zinc-300">
+        <div>
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2.5 select-text">
+                    <h3 class="text-sm font-semibold text-zinc-900">Structured Logic Engine</h3>
+                </div>
+                <span class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-500 border border-zinc-200/60 uppercase tracking-wider select-none">
+                    LLM • {{ config.LLM_CONFIG.mode }}
+                </span>
+            </div>
+            
+            <div class="relative mt-4 h-32 rounded-xl overflow-hidden">
+                <pre class="w-full h-full bg-zinc-950 font-mono text-[11px] text-zinc-400 p-3 overflow-hidden leading-relaxed selection:bg-zinc-700 transition-all duration-300 group-hover:blur-[2px] group-hover:opacity-30">{{ llm_logs }}</pre>
+                
+                <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-2 bg-zinc-900/5 backdrop-blur-xs p-4">
+                    <a href="{% url 'view_terminal' model_type='llm' %}" class="bg-zinc-900 hover:bg-zinc-800 text-white font-medium text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-center block shadow-md">View Terminal</a>
+                    <a href="{% url 'control_model' model_type='llm' action='start' %}" class="bg-[#0071e3] hover:bg-[#0066cc] text-white text-[11px] font-medium px-3 py-1.5 rounded-md transition-colors cursor-pointer block shadow-md">Start</a>
+                    <a href="{% url 'control_model' model_type='llm' action='stop' %}" class="bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-medium px-3 py-1.5 rounded-md transition-colors cursor-pointer block shadow-md">Stop</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex justify-between items-center mt-2 z-10">
+            <a href="http://{{ config.LLM_CONFIG.host }}:{{ config.LLM_CONFIG.port }}" target="_blank" class="text-[11px] font-medium text-[#0071e3] hover:underline tracking-tight">
+                Chat With Model ↗
+            </a>
+            <span class="font-mono text-[11px] text-zinc-400 select-all tracking-tight cursor-text">
+                {{ config.LLM_CONFIG.host }}:{{ config.LLM_CONFIG.port }}
+            </span>
+        </div>
+    </div>
+
+    <div class="group relative bg-white p-6 rounded-2xl border border-zinc-200/80 flex flex-col justify-between h-64 transition-all hover:border-zinc-300">
+        <div>
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2.5 select-text">
+                    <h3 class="text-sm font-semibold text-zinc-900">Mission Dialogue Engine</h3>
+                </div>
+                <span class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-500 border border-zinc-200/60 uppercase tracking-wider select-none">
+                    Conv-LLM • {{ config.CONV_LLM_CONFIG.mode }}
+                </span>
+            </div>
+            
+            <div class="relative mt-4 h-32 rounded-xl overflow-hidden">
+                <pre class="w-full h-full bg-zinc-950 font-mono text-[11px] text-zinc-400 p-3 overflow-hidden leading-relaxed selection:bg-zinc-700 transition-all duration-300 group-hover:blur-[2px] group-hover:opacity-30">{{ conv_logs }}</pre>
+                
+                <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-2 bg-zinc-900/5 backdrop-blur-xs p-4">
+                    <a href="{% url 'view_terminal' model_type='conv' %}" class="bg-zinc-900 hover:bg-zinc-800 text-white font-medium text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-center block shadow-md">View Terminal</a>
+                    <a href="{% url 'control_model' model_type='conv' action='start' %}" class="bg-[#0071e3] hover:bg-[#0066cc] text-white text-[11px] font-medium px-3 py-1.5 rounded-md transition-colors cursor-pointer block shadow-md">Start</a>
+                    <a href="{% url 'control_model' model_type='conv' action='stop' %}" class="bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-medium px-3 py-1.5 rounded-md transition-colors cursor-pointer block shadow-md">Stop</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex justify-between items-center mt-2 z-10">
+            <a href="http://{{ config.CONV_LLM_CONFIG.host }}:{{ config.CONV_LLM_CONFIG.port }}" target="_blank" class="text-[11px] font-medium text-[#0071e3] hover:underline tracking-tight">
+                Chat With Model ↗
+            </a>
+            <span class="font-mono text-[11px] text-zinc-400 select-all tracking-tight cursor-text">
+                {{ config.CONV_LLM_CONFIG.host }}:{{ config.CONV_LLM_CONFIG.port }}
+            </span>
+        </div>
+    </div>
+
+    <div class="group relative bg-white p-6 rounded-2xl border border-zinc-200/80 flex flex-col justify-between h-64 transition-all hover:border-zinc-300">
+        <div>
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2.5 select-text">
+                    <h3 class="text-sm font-semibold text-zinc-900 select-text">Spatial Segmentation Engine</h3>
+                </div>
+                <span class="text-[11px] font-medium bg-zinc-100 text-zinc-600 border border-zinc-200 px-2 py-0.5 rounded-full uppercase tracking-wider select-none">
+                    SAM3 • {{ config.SAM3_CONFIG.mode }}
+                </span>
+            </div>
+            
+            <div class="mt-4 bg-zinc-50 border border-zinc-200/60 rounded-xl h-32 flex items-center justify-center select-none relative overflow-hidden">
+                <p class="text-xs text-zinc-400 font-medium tracking-tight">
+                    SAM3 will start during runtime
+                </p>
+            </div>
+        </div>
+        
+        <div class="flex justify-between items-center mt-2 h-4 select-none">
+            <span class="font-mono text-[11px] text-zinc-400 select-all tracking-tight cursor-text">
+                {{ config.SAM3_CONFIG.host }}:{{ config.SAM3_CONFIG.port }}
+            </span>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        setInterval(function() {
+            window.location.reload();
+        }, 5000);
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,117 @@
+{% extends 'infrastructure_manager/base.html' %}
+
+{% block title %}{{ model_name }} Diagnostic Console Log{% endblock %}
+
+{% block models_tab_ui %}font-semibold text-[#0071e3] border-b-2 border-[#0071e3]{% endblock %}
+
+{% block main_width %}max-w-6xl{% endblock %}
+
+{% block content %}
+<div class="space-y-4 animate-fade-in">
+    
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 select-none">
+        <div class="flex items-center space-x-2">
+            <a href="{% url 'manage_models' %}" class="text-xs font-medium text-zinc-500 hover:text-[#0071e3] transition-colors">
+                Manage Models
+            </a>
+            <span class="text-zinc-300 font-sans text-xs">/</span>
+            <span class="text-xs font-semibold text-zinc-800 tracking-tight">
+                {{ model_name }} Live Log Diagnostics
+            </span>
+        </div>
+        
+        <div class="flex items-center space-x-2 bg-white px-3 py-1 rounded-full border border-zinc-200/60 shadow-xs">
+            <span class="relative flex h-2 w-2">
+                {% if is_online %}
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_5px_#10b981]"></span>
+                {% else %}
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-zinc-300"></span>
+                {% endif %}
+            </span>
+            <span class="font-mono text-[11px] font-medium text-zinc-500 uppercase tracking-tight">
+                {% if is_online %}tty.server.{{ port }} @ active{% else %}tty.server.{{ port }} @ offline{% endif %}
+            </span>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-zinc-200/80 shadow-sm overflow-hidden flex flex-col">
+        
+        <div class="bg-[#f5f5f7] border-b border-zinc-200 px-5 py-3 flex items-center justify-between select-none">
+            
+            <div class="flex items-center space-x-2.5">
+                <span class="font-mono text-[10px] uppercase font-bold tracking-wider {% if is_online %}bg-emerald-100 text-emerald-700{% else %}bg-zinc-200 text-zinc-600{% endif %} px-1.5 py-0.5 rounded-md transition-colors duration-200">
+                    stdout
+                </span>
+                <h2 class="font-sans text-xs font-semibold text-zinc-700 tracking-tight">
+                    Standard Output Stream — {{ model_name }}
+                </h2>
+            </div>
+            
+            <div>
+                {% if is_online %}
+                    <button onclick="copyConsoleLogs()" class="text-zinc-500 hover:text-zinc-800 font-sans text-[11px] font-medium transition-colors bg-white border border-zinc-200 px-2.5 py-1 rounded-lg cursor-pointer focus:outline-none shadow-xs">
+                        Copy Output
+                    </button>
+                {% else %}
+                    <button disabled class="text-zinc-300 font-sans text-[11px] font-medium bg-zinc-50 border border-zinc-100 px-2.5 py-1 rounded-lg cursor-not-allowed select-none">
+                        Copy Output
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="bg-zinc-950 p-5 md:p-6 overflow-hidden">
+            <pre id="console-stream-buffer" class="w-full bg-zinc-950 font-mono text-[11px] {% if is_online %}text-zinc-300{% else %}text-zinc-500 italic{% endif %} overflow-x-auto overflow-y-auto leading-relaxed tracking-normal select-text selection:bg-zinc-700 h-[calc(100vh-340px)] min-h-[480px] scroll-smooth">{{ log_content }}</pre>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // 1. Automatically snap view scroll context to the tail bounds on initial layout load
+        const buffer = document.getElementById("console-stream-buffer");
+        if (buffer) {
+            buffer.scrollTop = buffer.scrollHeight;
+        }
+        
+        // 2. Live polling loop automatically refreshes weight matrix updates every 2.5 seconds
+        setInterval(function() {
+            window.location.reload();
+        }, 2500);
+    });
+
+    function copyConsoleLogs() {
+        const bufferText = document.getElementById("console-stream-buffer").innerText;
+        navigator.clipboard.writeText(bufferText).then(() => {
+            // Leverage your master toast system configured inside base.html to push floating copies
+            const container = document.getElementById("toast-container");
+            if (container) {
+                const toastHtml = `
+                    <div class="toast-card transition-all duration-300 bg-white/90 backdrop-blur-xl p-4 rounded-xl border border-zinc-200/80 shadow-2xl flex items-start space-x-3.5 pointer-events-auto">
+                        <span class="h-2 w-2 rounded-full mt-1.5 shrink-0 bg-emerald-500 shadow-[0_0_6px_#10b981]"></span>
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Clipboard Service</span>
+                            </div>
+                            <p class="text-xs font-medium text-zinc-700 mt-1 leading-normal tracking-tight">Console history copied to system clipboard.</p>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', toastHtml);
+                
+                // Programmatically fade and clear the clipboard element notice matching base constraints
+                const appendedToast = container.lastElementChild;
+                setTimeout(() => {
+                    appendedToast.classList.add("opacity-0", "scale-95", "-translate-y-1");
+                    setTimeout(() => appendedToast.remove(), 300);
+                }, 4000);
+            }
+        }).catch(err => {
+            console.error('Failed to dump stream strings to clipboard buffer: ', err);
+        });
+    }
+</script>
+{% endblock %}
