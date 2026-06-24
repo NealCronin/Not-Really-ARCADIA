@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+from django.conf import settings
 
 # Dynamically add the drone heatmap pipeline directory to the python path
 project_root = Path(__file__).resolve().parent.parent.parent
