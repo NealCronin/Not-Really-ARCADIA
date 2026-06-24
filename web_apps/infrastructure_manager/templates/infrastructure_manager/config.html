@@ -115,7 +115,7 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="space-y-1.5">
                 <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Network Host (IP)</label>
-                <input type="text" name="llm_host" value="{{ config.LLM_CONFIG.host }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
+                <input type="text" name="llm_host" value="{{ config.LLM_CONFIG.host }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none :bg-white focus:border-[#0071e3] transition-all">
             </div>
             <div class="space-y-1.5">
                 <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Port Allocation</label>
@@ -146,6 +146,28 @@
             <div class="space-y-1.5">
                 <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Model Target File (.gguf)</label>
                 <input type="text" name="llm_hf_file" value="{{ config.LLM_CONFIG.hf_file }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 border-t border-zinc-100 pt-4">
+            <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Context Window</label>
+                <input type="number" name="llm_ctx_size" value="{{ config.LLM_CONFIG.ctx_size }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
+            </div>
+            <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Temperature</label>
+                <input type="text" name="llm_temp" value="{{ config.LLM_CONFIG.temperature }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
+            </div>
+            <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Min P Sampling</label>
+                <input type="text" name="llm_min_p" value="{{ config.LLM_CONFIG.min_p }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
+            </div>
+            <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Reasoning Core</label>
+                <select name="llm_thinking" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
+                    <option value="false" {% if not config.LLM_CONFIG.thinking %}selected{% endif %}>OFF</option>
+                    <option value="true" {% if config.LLM_CONFIG.thinking %}selected{% endif %}>ON</option>
+                </select>
             </div>
         </div>
     </div>
@@ -195,6 +217,28 @@
                 <input type="text" name="conv_hf_file" value="{{ config.CONV_LLM_CONFIG.hf_file }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
             </div>
         </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 border-t border-zinc-100 pt-4">
+            <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Context Window</label>
+                <input type="number" name="conv_ctx_size" value="{{ config.CONV_LLM_CONFIG.ctx_size }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
+            </div>
+            <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Temperature</label>
+                <input type="text" name="conv_temp" value="{{ config.CONV_LLM_CONFIG.temperature }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
+            </div>
+            <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Min P Sampling</label>
+                <input type="text" name="conv_min_p" value="{{ config.CONV_LLM_CONFIG.min_p }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
+            </div>
+            <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Reasoning Core</label>
+                <select name="conv_thinking" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
+                    <option value="false" {% if not config.CONV_LLM_CONFIG.thinking %}selected{% endif %}>OFF</option>
+                    <option value="true" {% if config.CONV_LLM_CONFIG.thinking %}selected{% endif %}>ON</option>
+                </select>
+            </div>
+        </div>
     </div>
 
     <div class="bg-white p-6 rounded-2xl border border-zinc-200/80 shadow-xs space-y-6">
@@ -224,12 +268,15 @@
             </div>
             <div id="sam3_vpn_ip_container" class="bg-zinc-50 border border-zinc-200/60 p-3 rounded-xl {% if not config.SAM3_CONFIG.use_vpn_tunnel %}hidden{% endif %} pt-1">
                 <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block mb-1">Remote VPN IP Address</label>
-                <input type="text" name="sam3_vpn_host" id="sam3_vpn_host" value="{{ config.SAM3_CONFIG.vpn_host }}" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-1.5 text-xs font-medium focus:outline-none focus:bg-white focus:border-[#0071e3]">
+                <input type="text" name="sam3_vpn_host" id="sam3_vpn_host" value="{{ config.SAM3_CONFIG.vpn_host }}" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-[#0071e3]">
             </div>
         </div>
     </div>
 
-    <div class="flex justify-end pt-4 select-none">
+    <div class="flex justify-end pt-4 space-x-3 select-none">
+        <a href="{% url 'restore_defaults' %}" class="bg-zinc-200 hover:bg-zinc-300 text-zinc-700 font-semibold text-xs px-6 py-2.5 rounded-xl transition-all shadow-sm cursor-pointer transform active:scale-98 flex items-center justify-center">
+            Restore Defaults
+        </a>
         <button type="submit" class="bg-[#0071e3] hover:bg-[#0066cc] text-white font-semibold text-xs px-6 py-2.5 rounded-xl transition-all shadow-md hover:shadow-lg cursor-pointer transform active:scale-98">
             Save Parameters
         </button>

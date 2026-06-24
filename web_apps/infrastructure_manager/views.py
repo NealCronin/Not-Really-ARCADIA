@@ -100,7 +100,7 @@ def check_server_alive(host: str, port: int) -> bool:
 
 def local_directory_browser_api(request):
     try:
-        script = 'tell application \"System Events\" to activate\nPOSIX path of (choose folder with prompt \"Select Dataset Root Location:\")'
+        script = 'tell application "System Events" to activate\nPOSIX path of (choose folder with prompt "Select Dataset Root Location:")'
         proc = subprocess.Popen(['osascript', '-e', script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         stdout, stderr = proc.communicate()
         if proc.returncode == 0 and stdout.strip():
@@ -162,7 +162,7 @@ def config_page(request):
 
         with open(gen_json_path, "w") as f: json.dump(gen_config, f, indent=2)
         with open(lm_json_path, "w") as f: json.dump(lm_config, f, indent=2)
-        messages.success(request, "System parameters saved.")
+        messages.success(request, "Parameters saved.")
         return redirect("config_page")
 
     past_dataset_paths_history = [{"full_path": p, "display_name": os.path.basename(p) or p} for p in gen_config.get("recent_dataset_paths", [])]
@@ -172,6 +172,29 @@ def config_page(request):
         "current_dataset_basename": os.path.basename(gen_config.get("DATASET_ROOT", "")) or gen_config.get("DATASET_ROOT", ""),
         "recent_dataset_paths": past_dataset_paths_history
     })
+
+
+def restore_defaults(request):
+    """Reads from defaults.json to overwrite lm_config.json."""
+    lm_json_path = Path(settings.DRONE_CODE_DIR) / "config" / "lm_config.json"
+    defaults_json_path = Path(settings.DRONE_CODE_DIR) / "config" / "defaults.json"
+    
+    if not defaults_json_path.exists():
+        messages.error(request, "Defaults template file (defaults.json) is missing.")
+        return redirect("config_page")
+        
+    try:
+        with open(defaults_json_path, "r") as f:
+            default_config = json.load(f)
+            
+        with open(lm_json_path, "w") as f:
+            json.dump(default_config, f, indent=2)
+            
+        messages.success(request, "Restored to default configurations.")
+    except Exception as e:
+        messages.error(request, f"Error writing configuration: {str(e)}")
+        
+    return redirect("config_page")
 
 
 def manage_models(request):
@@ -196,7 +219,7 @@ def manage_models(request):
                     return False, "waiting for startup (local tunnel proxy bridge offline)"
                 return is_running_on_host, agent_res.get("logs", "waiting for startup")
             except:
-                return False, f"[node_agent unreachable at http://{target_ip}:{NODE_AGENT_PORT}]"
+                return False, f"[node_agent unreachable at http://{target_ip}]"
 
         is_online = check_server_alive(host, port)
         log_file = Path(settings.DRONE_CODE_DIR) / "logs" / f"server_{port}.log"
@@ -238,8 +261,9 @@ def control_model(request, model_type, action):
             if action == "start":
                 payload = {
                     "model_type": model_type, "hf_repo": config_block.get("hf_repo", ""), "hf_file": config_block.get("hf_file", ""),
-                    "n_gpu_layers": int(config_block.get("n_gpu_layers", 0)), "ctx_size": int(config_block.get("ctx_size", 2048)),
-                    "temperature": float(config_block.get("temperature", 0.1)), "thinking": config_block.get("thinking", False)
+                    "n_gpu_layers": int(config_block.get("n_gpu_layers", 0)), "ctx_size": int(config_block.get("ctx_size", 4096)),
+                    "temperature": float(config_block.get("temperature", 0.1)), "min_p": float(config_block.get("min_p", 0.05)),
+                    "thinking": config_block.get("thinking", False)
                 }
                 requests.post(f"http://{target_ip}:{NODE_AGENT_PORT}/api/node/start", json=payload, timeout=2.0)
                 if use_vpn and port not in active_vpn_tunnels:
