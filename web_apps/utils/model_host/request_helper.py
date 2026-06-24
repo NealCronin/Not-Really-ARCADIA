@@ -80,45 +80,32 @@ class Sam3Client(BaseRemoteClient):
         return f"http://{self.host}:{self.port}/v1/predict"
 
     def request(
-        self,
-        image_base64: str,
-        prompts: List[str],
-        confidence: float = 0.25,
+    self,
+    image_base64: str,
+    prompts: List[str],
+    confidence: float = 0.25,
     ) -> Dict[str, Any]:
-        """Streams an in-memory base64 image and metadata to the remote SAM 3 server."""
+        """Sends a clean JSON payload matching the SAM3 Pydantic validation schema."""
         
-        # Pack the textual configurations into a compact JSON payload
-        metadata_payload = {
+        # Clean up the string if a data URI prefix accidentally got passed
+        if "," in image_base64:
+            image_base64 = image_base64.split(",", 1)[1]
+
+        # Construct payload exactly like SAM3InferenceRequest schema
+        payload = {
+            "image": image_base64,
             "prompts": prompts,
             "conf": confidence
         }
-        
-        form_data = {
-            "metadata": json.dumps(metadata_payload)
-        }
 
         try:
-            # Strip data URI prefix if it accidentally got passed in (e.g., "data:image/jpeg;base64,")
-            if "," in image_base64:
-                image_base64 = image_base64.split(",", 1)[1]
-
-            # Decode base64 string into raw binary bytes
-            image_bytes = base64.b64decode(image_base64)
-            
-            # Wrap bytes in a file-like object for the requests multipart upload
-            img_file = io.BytesIO(image_bytes)
-            files = {
-                "image": ("image.jpg", img_file, "image/jpeg")
-            }
-
-            # Start network transmission boundary timer
             network_start = time.perf_counter()
             
-            # Fire the multipart/form-data request
+            # Change from files/data to a clean json= argument
             response = requests.post(
                 self.endpoint, 
-                files=files, 
-                data=form_data, 
+                json=payload, 
+                headers={"Content-Type": "application/json"},
                 timeout=60
             )
             

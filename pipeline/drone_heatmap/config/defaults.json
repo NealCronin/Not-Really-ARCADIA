@@ -1,51 +1,11 @@
 {
-  "VLM_CONFIG": {
-    "mode": "local",
-    "host": "127.0.0.1",
-    "port": 8600,
-    "use_vpn_tunnel": false,
-    "vpn_host": "",
-    "n_gpu_layers": 32,
-    "ctx_size": 4096,
-    "temperature": 0.1,
-    "min_p": 0.05,
-    "thinking": false,
-    "hf_repo": "",
-    "hf_file": ""
+  "ENVIRONMENT_SETTINGS": {
+    "DATASET_ROOT": "",
+    "NODE_AGENT_PORT": 8705,
+    "recent_dataset_paths": []
   },
-  "LLM_CONFIG": {
-    "mode": "local",
-    "host": "127.0.0.1",
-    "port": 8081,
-    "use_vpn_tunnel": false,
-    "vpn_host": "",
-    "n_gpu_layers": 32,
-    "ctx_size": 4096,
-    "temperature": 0.1,
-    "min_p": 0.05,
-    "thinking": false,
-    "hf_repo": "",
-    "hf_file": ""
-  },
-  "CONV_LLM_CONFIG": {
-    "mode": "local",
-    "host": "127.0.0.1",
-    "port": 8082,
-    "use_vpn_tunnel": false,
-    "vpn_host": "",
-    "n_gpu_layers": 32,
-    "ctx_size": 4096,
-    "temperature": 0.7,
-    "min_p": 0.05,
-    "thinking": false,
-    "hf_repo": "",
-    "hf_file": ""
-  },
-  "SAM3_CONFIG": {
-    "mode": "local",
-    "host": "127.0.0.1",
-    "port": 8000,
-    "use_vpn_tunnel": false,
-    "vpn_host": ""
-  }
+  "VLM_CONFIG": { "mode": "local", "host": "127.0.0.1", "port": 8600, "use_vpn_tunnel": false, "vpn_host": "", "n_gpu_layers": 32, "ctx_size": 4096, "temperature": 0.1, "min_p": 0.05, "thinking": false, "hf_repo": "", "hf_file": "" },
+  "LLM_CONFIG": { "mode": "local", "host": "127.0.0.1", "port": 8081, "use_vpn_tunnel": false, "vpn_host": "", "n_gpu_layers": 32, "ctx_size": 4096, "temperature": 0.1, "min_p": 0.05, "thinking": false, "hf_repo": "", "hf_file": "" },
+  "CONV_LLM_CONFIG": { "mode": "local", "host": "127.0.0.1", "port": 8082, "use_vpn_tunnel": false, "vpn_host": "", "n_gpu_layers": 32, "ctx_size": 4096, "temperature": 0.7, "min_p": 0.05, "thinking": false, "hf_repo": "", "hf_file": "" },
+  "SAM3_CONFIG": { "mode": "local", "host": "127.0.0.1", "port": 8000, "use_vpn_tunnel": false, "vpn_host": "" }
 }

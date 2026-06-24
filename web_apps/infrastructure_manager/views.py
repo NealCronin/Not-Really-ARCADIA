@@ -20,7 +20,6 @@ if str(model_host_dir) not in sys.path:
 from lm_server_helper import LlamaServer
 
 active_vpn_tunnels = {}
-NODE_AGENT_PORT = 8705  
 
 
 class VPNTunnelBridge:
@@ -31,12 +30,6 @@ class VPNTunnelBridge:
         self.remote_port = remote_port
         self.running = False
         self.server_socket = None
-        self.traffic_log = []
-
-    def log(self, message: str):
-        self.traffic_log.append(f"[{threading.current_thread().name}] {message}")
-        if len(self.traffic_log) > 40:
-            self.traffic_log.pop(0)
 
     def _pipe(self, source, destination):
         try:
@@ -52,13 +45,10 @@ class VPNTunnelBridge:
             except: pass
 
     def _handle_client(self, client_socket, addr):
-        self.log(f"Connection from client {addr[0]}:{addr[1]}")
         remote_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             remote_socket.connect((self.remote_host, self.remote_port))
-            self.log(f"Forwarding traffic ➡️ [{self.remote_host}]:{self.remote_port}")
-        except Exception as e:
-            self.log(f"Forwarding failed: {e}")
+        except:
             client_socket.close()
             return
         threading.Thread(target=self._pipe, args=(client_socket, remote_socket), daemon=True).start()
@@ -71,8 +61,7 @@ class VPNTunnelBridge:
             self.server_socket.bind((self.local_host, self.local_port))
             self.server_socket.listen(100)
             self.running = True
-            self.log(f"Listening on {self.local_host}:{self.local_port}")
-        except Exception as e:
+        except:
             return False
         def listen_loop():
             while self.running:
@@ -112,22 +101,28 @@ def local_directory_browser_api(request):
 
 def config_page(request):
     lm_json_path = Path(settings.DRONE_CODE_DIR) / "config" / "lm_config.json"
-    gen_json_path = Path(settings.DRONE_CODE_DIR) / "config" / "settings.json"
     
-    if gen_json_path.exists():
-        with open(gen_json_path, "r") as f: gen_config = json.load(f)
-    else: gen_config = {"DATASET_ROOT": "", "recent_dataset_paths": []}
     if lm_json_path.exists():
         with open(lm_json_path, "r") as f: lm_config = json.load(f)
-    else: lm_config = {}
+    else:
+        lm_config = {
+            "ENVIRONMENT_SETTINGS": {"DATASET_ROOT": "", "NODE_AGENT_PORT": 8705, "recent_dataset_paths": []},
+            "VLM_CONFIG": {}, "LLM_CONFIG": {}, "CONV_LLM_CONFIG": {}, "SAM3_CONFIG": {}
+        }
+
+    env_settings = lm_config.setdefault("ENVIRONMENT_SETTINGS", {"DATASET_ROOT": "", "NODE_AGENT_PORT": 8705, "recent_dataset_paths": []})
 
     if request.method == "POST":
         chosen_dataset_root = request.POST.get("dataset_root", "").strip()
-        gen_config["DATASET_ROOT"] = chosen_dataset_root
-        if "recent_dataset_paths" not in gen_config: gen_config["recent_dataset_paths"] = []
-        if chosen_dataset_root and chosen_dataset_root not in gen_config["recent_dataset_paths"]:
-            gen_config["recent_dataset_paths"].insert(0, chosen_dataset_root)
-            gen_config["recent_dataset_paths"] = gen_config["recent_dataset_paths"][:10]
+        node_agent_port = int(request.POST.get("node_agent_port", 8705))
+        
+        env_settings["DATASET_ROOT"] = chosen_dataset_root
+        env_settings["NODE_AGENT_PORT"] = node_agent_port
+        
+        if chosen_dataset_root and chosen_dataset_root not in env_settings.get("recent_dataset_paths", []):
+            if "recent_dataset_paths" not in env_settings: env_settings["recent_dataset_paths"] = []
+            env_settings["recent_dataset_paths"].insert(0, chosen_dataset_root)
+            env_settings["recent_dataset_paths"] = env_settings["recent_dataset_paths"][:10]
 
         for block in ["VLM_CONFIG", "LLM_CONFIG", "CONV_LLM_CONFIG", "SAM3_CONFIG"]:
             pfx = block.lower().replace("_config", "")
@@ -160,22 +155,21 @@ def config_page(request):
                     "repeat_penalty": float(request.POST.get(f"{pfx}_repeat_penalty", 1.0))
                 }
 
-        with open(gen_json_path, "w") as f: json.dump(gen_config, f, indent=2)
         with open(lm_json_path, "w") as f: json.dump(lm_config, f, indent=2)
         messages.success(request, "Parameters saved.")
         return redirect("config_page")
 
-    past_dataset_paths_history = [{"full_path": p, "display_name": os.path.basename(p) or p} for p in gen_config.get("recent_dataset_paths", [])]
-    merged_config = {**lm_config, **gen_config}
+    past_dataset_paths_history = [{"full_path": p, "display_name": os.path.basename(p) or p} for p in env_settings.get("recent_dataset_paths", [])]
     return render(request, "infrastructure_manager/config.html", {
-        "config": merged_config, "current_dataset_root": gen_config.get("DATASET_ROOT", ""),
-        "current_dataset_basename": os.path.basename(gen_config.get("DATASET_ROOT", "")) or gen_config.get("DATASET_ROOT", ""),
+        "config": lm_config,
+        "env_settings": env_settings,
+        "current_dataset_root": env_settings.get("DATASET_ROOT", ""),
+        "current_dataset_basename": os.path.basename(env_settings.get("DATASET_ROOT", "")) or env_settings.get("DATASET_ROOT", ""),
         "recent_dataset_paths": past_dataset_paths_history
     })
 
 
 def restore_defaults(request):
-    """Reads from defaults.json to overwrite lm_config.json."""
     lm_json_path = Path(settings.DRONE_CODE_DIR) / "config" / "lm_config.json"
     defaults_json_path = Path(settings.DRONE_CODE_DIR) / "config" / "defaults.json"
     
@@ -184,12 +178,8 @@ def restore_defaults(request):
         return redirect("config_page")
         
     try:
-        with open(defaults_json_path, "r") as f:
-            default_config = json.load(f)
-            
-        with open(lm_json_path, "w") as f:
-            json.dump(default_config, f, indent=2)
-            
+        with open(defaults_json_path, "r") as f: default_config = json.load(f)
+        with open(lm_json_path, "w") as f: json.dump(default_config, f, indent=2)
         messages.success(request, "Restored to default configurations.")
     except Exception as e:
         messages.error(request, f"Error writing configuration: {str(e)}")
@@ -200,6 +190,9 @@ def restore_defaults(request):
 def manage_models(request):
     json_path = Path(settings.DRONE_CODE_DIR) / "config" / "lm_config.json"
     with open(json_path, "r") as f: lm_config = json.load(f)
+    
+    env_settings = lm_config.get("ENVIRONMENT_SETTINGS", {"NODE_AGENT_PORT": 8705})
+    node_port = env_settings.get("NODE_AGENT_PORT", 8705)
         
     def fetch_stream(config_node):
         host = config_node.get("host", "127.0.0.1")
@@ -211,15 +204,15 @@ def manage_models(request):
         if mode == "remote":
             target_ip = vpn_host if use_vpn else host
             try:
-                agent_res = requests.get(f"http://{target_ip}:{NODE_AGENT_PORT}/api/node/logs?port={port}&max_lines=6", timeout=0.5).json()
-                is_running_on_host = requests.get(f"http://{target_ip}:{NODE_AGENT_PORT}/api/node/status?port={port}", timeout=0.5).json().get("online", False)
+                agent_res = requests.get(f"http://{target_ip}:{node_port}/api/node/logs?port={port}&max_lines=6", timeout=0.5).json()
+                is_running_on_host = requests.get(f"http://{target_ip}:{node_port}/api/node/status?port={port}", timeout=0.5).json().get("online", False)
                 if use_vpn:
                     if port in active_vpn_tunnels:
                         return True, f"[vpn bridge proxy operational]\n" + agent_res.get("logs", "waiting for startup")
                     return False, "waiting for startup (local tunnel proxy bridge offline)"
                 return is_running_on_host, agent_res.get("logs", "waiting for startup")
             except:
-                return False, f"[node_agent unreachable at http://{target_ip}]"
+                return False, f"[node_agent unreachable at http://{target_ip}:{node_port}]"
 
         is_online = check_server_alive(host, port)
         log_file = Path(settings.DRONE_CODE_DIR) / "logs" / f"server_{port}.log"
@@ -246,6 +239,10 @@ def manage_models(request):
 def control_model(request, model_type, action):
     json_path = Path(settings.DRONE_CODE_DIR) / "config" / "lm_config.json"
     with open(json_path, "r") as f: lm_config = json.load(f)
+    
+    env_settings = lm_config.get("ENVIRONMENT_SETTINGS", {"NODE_AGENT_PORT": 8705})
+    node_port = env_settings.get("NODE_AGENT_PORT", 8705)
+    
     key_map = {"vlm": "VLM_CONFIG", "llm": "LLM_CONFIG", "conv": "CONV_LLM_CONFIG", "sam3": "SAM3_CONFIG"}
     config_block = lm_config.get(key_map.get(model_type))
     
@@ -265,19 +262,19 @@ def control_model(request, model_type, action):
                     "temperature": float(config_block.get("temperature", 0.1)), "min_p": float(config_block.get("min_p", 0.05)),
                     "thinking": config_block.get("thinking", False)
                 }
-                requests.post(f"http://{target_ip}:{NODE_AGENT_PORT}/api/node/start", json=payload, timeout=2.0)
+                requests.post(f"http://{target_ip}:{node_port}/api/node/start", json=payload, timeout=2.0)
                 if use_vpn and port not in active_vpn_tunnels:
                     bridge = VPNTunnelBridge(local_host=host, local_port=port, remote_host=vpn_host, remote_port=port)
                     if bridge.start(): active_vpn_tunnels[port] = bridge
                 messages.success(request, f"Start instruction sent.")
             elif action == "stop":
-                requests.post(f"http://{target_ip}:{NODE_AGENT_PORT}/api/node/stop?port={port}", timeout=2.0)
+                requests.post(f"http://{target_ip}:{node_port}/api/node/stop?port={port}", timeout=2.0)
                 if port in active_vpn_tunnels:
                     active_vpn_tunnels[port].stop()
                     del active_vpn_tunnels[port]
                 messages.success(request, f"Stop instruction sent.")
         except:
-            messages.error(request, f"Connection failed to host at {target_ip}")
+            messages.error(request, f"Connection failed to host at {target_ip}:{node_port}")
         return redirect("manage_models")
 
     server = LlamaServer(
@@ -308,6 +305,10 @@ def control_model(request, model_type, action):
 def view_terminal(request, model_type):
     json_path = Path(settings.DRONE_CODE_DIR) / "config" / "lm_config.json"
     with open(json_path, "r") as f: lm_config = json.load(f)
+    
+    env_settings = lm_config.get("ENVIRONMENT_SETTINGS", {"NODE_AGENT_PORT": 8705})
+    node_port = env_settings.get("NODE_AGENT_PORT", 8705)
+    
     key_map = {"vlm": "VLM_CONFIG", "llm": "LLM_CONFIG", "conv": "CONV_LLM_CONFIG"}
     config_block = lm_config.get(key_map.get(model_type))
     host = config_block.get("host", "127.0.0.1")
@@ -319,12 +320,12 @@ def view_terminal(request, model_type):
     if mode == "remote":
         target_ip = vpn_host if use_vpn else host
         try:
-            res = requests.get(f"http://{target_ip}:{NODE_AGENT_PORT}/api/node/logs?port={port}&max_lines=0", timeout=1.0).json()
-            is_online = requests.get(f"http://{target_ip}:{NODE_AGENT_PORT}/api/node/status?port={port}", timeout=1.0).json().get("online", False)
+            res = requests.get(f"http://{target_ip}:{node_port}/api/node/logs?port={port}&max_lines=0", timeout=1.0).json()
+            is_online = requests.get(f"http://{target_ip}:{node_port}/api/node/status?port={port}", timeout=1.0).json().get("online", False)
             log_content = res.get("logs", "waiting for startup")
         except:
             is_online = False
-            log_content = f"[node_agent unreachable at http://{target_ip}]"
+            log_content = f"[node_agent unreachable at http://{target_ip}:{node_port}]"
     else:
         is_online = check_server_alive(host, port)
         log_file = Path(settings.DRONE_CODE_DIR) / "logs" / f"server_{port}.log"

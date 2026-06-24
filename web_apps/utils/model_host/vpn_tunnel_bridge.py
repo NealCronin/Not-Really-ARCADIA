@@ -21,14 +21,22 @@ class VPNTunnelBridge:
         try:
             while self.running:
                 data = source.recv(262144)
-                if not data: break
+                if not data: 
+                    break
                 destination.sendall(data)
-        except: pass
+        except: 
+            pass
         finally:
-            try: source.close()
-            except: pass
-            try: destination.close()
-            except: pass
+            # Signal to the destination that we are done writing data,
+            # but keep it open so the other thread can still read from it!
+            try: 
+                destination.shutdown(socket.SHUT_WR)
+            except: 
+                pass
+            try: 
+                source.shutdown(socket.SHUT_RD)
+            except: 
+                pass
 
     def _handle_client(self, client_socket, addr):
         self.log(f"Connection from local client {addr[0]}:{addr[1]}")
@@ -40,8 +48,19 @@ class VPNTunnelBridge:
             self.log(f"Tunnel routing link failed: {e}")
             client_socket.close()
             return
-        threading.Thread(target=self._pipe, args=(client_socket, remote_socket), daemon=True).start()
-        threading.Thread(target=self._pipe, args=(remote_socket, client_socket), daemon=True).start()
+
+        # Helper function to close everything only when BOTH threads are done
+        def clean_close():
+            try: client_socket.close()
+            except: pass
+            try: remote_socket.close()
+            except: pass
+
+        t1 = threading.Thread(target=self._pipe, args=(client_socket, remote_socket), daemon=True)
+        t2 = threading.Thread(target=self._pipe, args=(remote_socket, client_socket), daemon=True)
+        
+        t1.start()
+        t2.start()
 
     def start(self) -> bool:
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
