@@ -1,11 +1,14 @@
 import sys
-from pathlib import Path  
-from django.conf import settings  # This MUST be at the absolute top!
+from pathlib import Path
 
-# 1. Inject code path into Python search arrays using the settings reference
-DRONE_SOURCE_PATH = str(settings.DRONE_CODE_DIR)
-if DRONE_SOURCE_PATH not in sys.path:
-    sys.path.insert(0, DRONE_SOURCE_PATH)
+# Dynamically add the drone heatmap pipeline directory to the python path
+project_root = Path(__file__).resolve().parent.parent.parent
+pipeline_dir = project_root / "pipeline" / "drone_heatmap"
+if str(pipeline_dir) not in sys.path:
+    sys.path.insert(0, str(pipeline_dir))
+
+# Now Python can successfully resolve the import
+from main import DroneHeatmap
 
 # 2. Rest of your standard imports
 import cv2
