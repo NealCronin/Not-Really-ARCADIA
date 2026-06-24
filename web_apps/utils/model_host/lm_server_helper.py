@@ -88,8 +88,23 @@ class LlamaServer:
 
         print(f"[*] Spawning automated llama.cpp repository server on port {self.port}...")
 
+        os.makedirs(self.log_dir, exist_ok=True)
+        log_path = os.path.join(self.log_dir, f"server_{self.port}.log")
+
+        print(f"[*] Spawning automated llama.cpp repository server on port {self.port}...")
+
         if sys.platform == "win32":
-            cmd_str = " ".join(f'"{arg}"' if " " in arg else arg for arg in cmd) + f" > \"{log_path}\" 2>&1"
+            # 1. Force the path to use proper Windows drive letters and backslashes
+            log_path = os.path.abspath(log_path)
+            
+            # 2. Quote individual parameters containing whitespace
+            cmd_parts = [f'"{arg}"' if " " in arg else arg for arg in cmd]
+            raw_cmd = " ".join(cmd_parts) + f' > "{log_path}" 2>&1'
+            
+            # 3. CRITICAL WINDOWS FIX: Wrap the entire execution block in an outer 
+            # set of quotes so cmd.exe preserves the nested path quotes safely.
+            cmd_str = f'"{raw_cmd}"'
+            
             subprocess.Popen(["cmd", "/k", cmd_str], creationflags=subprocess.CREATE_NEW_CONSOLE)
         elif sys.platform.startswith("linux"):
             bash_cmd = ["bash", "-c", " ".join(f'"{arg}"' for arg in cmd) + f" 2>&1 | tee '{log_path}'; exec bash"]
