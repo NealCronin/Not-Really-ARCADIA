@@ -94,18 +94,19 @@ class LlamaServer:
         print(f"[*] Spawning automated llama.cpp repository server on port {self.port}...")
 
         if sys.platform == "win32":
-            # 1. Force the path to use proper Windows drive letters and backslashes
+            # 1. Force the path to use absolute Windows formatting
             log_path = os.path.abspath(log_path)
             
-            # 2. Quote individual parameters containing whitespace
+            # 2. Build the core command string
             cmd_parts = [f'"{arg}"' if " " in arg else arg for arg in cmd]
             raw_cmd = " ".join(cmd_parts) + f' > "{log_path}" 2>&1'
             
-            # 3. CRITICAL WINDOWS FIX: Wrap the entire execution block in an outer 
-            # set of quotes so cmd.exe preserves the nested path quotes safely.
-            cmd_str = f'"{raw_cmd}"'
+            # 3. CRITICAL: Combine everything into a single string expression.
+            # Wrapping raw_cmd in quotes ensures cmd.exe strips them and parses the contents perfectly.
+            command_string = f'cmd /k "{raw_cmd}"'
             
-            subprocess.Popen(["cmd", "/k", cmd_str], creationflags=subprocess.CREATE_NEW_CONSOLE)
+            # 4. Pass the string directly (NOT as a list) to bypass Python auto-escaping
+            subprocess.Popen(command_string, creationflags=subprocess.CREATE_NEW_CONSOLE)
         elif sys.platform.startswith("linux"):
             bash_cmd = ["bash", "-c", " ".join(f'"{arg}"' for arg in cmd) + f" 2>&1 | tee '{log_path}'; exec bash"]
             subprocess.Popen(["gnome-terminal", "--"] + bash_cmd)
