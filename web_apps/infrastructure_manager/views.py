@@ -187,7 +187,7 @@ def control_model(request, model_type, action):
             # 2. Tell Node Agent to kill process
             node_url = get_node_agent_url(model_config, config.get("ENV_SETTINGS", {}))
             try:
-                requests.post(f"{node_url}/stop?port={local_port}", timeout=5)
+                requests.post(f"{node_url}/stop?port={local_port}", timeout=60)
                 messages.success(request, f"{model_type.upper()} shut down remotely and bridge closed.")
             except:
                 messages.warning(request, f"Local bridge closed, but could not reach remote node to kill process.")
