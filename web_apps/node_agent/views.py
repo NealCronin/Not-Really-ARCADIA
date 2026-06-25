@@ -8,15 +8,13 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.http import JsonResponse
 
+# Import the new ActiveDaemon model
+from .models import ActiveDaemon
+
 project_root = Path(__file__).resolve().parent.parent.parent
 
-if not hasattr(sys, '_active_host_daemons'):
-    sys._active_host_daemons = {}
-
-running_processes = sys._active_host_daemons
-
-
 def get_local_ip():
+    """Fetches the actual local LAN IP address instead of relying on localhost."""
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
@@ -26,19 +24,40 @@ def get_local_ip():
     except:
         return "127.0.0.1"
 
+def is_port_in_use(port: int) -> bool:
+    """Helper to check if a port is currently bound."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(("127.0.0.1", port)) == 0
+
+def is_pid_running(pid: int) -> bool:
+    """Cross-platform check to see if a specific PID is still alive."""
+    if not pid:
+        return False
+    try:
+        if sys.platform == "win32":
+            output = subprocess.check_output(f'tasklist /FI "PID eq {pid}"', shell=True, text=True)
+            return str(pid) in output
+        else:
+            os.kill(pid, 0) # Sending signal 0 checks existence without killing
+        return True
+    except OSError:
+        return False
 
 def host_dashboard(request):
     current_ip = get_local_ip()
 
+    # 1. State Cleanup: Remove DB entries if the process died or port was closed externally
+    for daemon in ActiveDaemon.objects.all():
+        if not is_pid_running(daemon.pid) and not is_port_in_use(daemon.port):
+            daemon.delete()
+
+    # 2. Handle Starting a New Service
     if request.method == "POST":
         service_type = request.POST.get("service_type", "llm_agent").strip()
         host = request.POST.get("host", "0.0.0.0").strip()
         port = int(request.POST.get("port", 8705))
 
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            is_port_blocked = s.connect_ex(("127.0.0.1", port)) == 0
-
-        if is_port_blocked or port in running_processes:
+        if is_port_in_use(port) or ActiveDaemon.objects.filter(port=port).exists():
             messages.error(request, f"Port {port} is currently occupied.")
             return redirect("host_dashboard")
 
@@ -49,64 +68,89 @@ def host_dashboard(request):
             script_path = project_root / "web_apps" / "node_agent" / "main.py"
             display_name = "Language Model"
 
+        # Spawn the process detached
         proc = subprocess.Popen(
             [sys.executable, str(script_path), "--host", host, "--port", str(port)],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True, cwd=str(script_path.parent)
+            stdout=subprocess.DEVNULL, 
+            stderr=subprocess.DEVNULL, 
+            text=True, 
+            cwd=str(script_path.parent)
         )
 
-        running_processes[port] = {
-            "proc": proc,
-            "type": display_name,
-            "host": host
-        }
+        # Save state to Database instead of volatile memory
+        ActiveDaemon.objects.create(
+            service_type=display_name,
+            host=host,
+            port=port,
+            pid=proc.pid
+        )
 
         messages.success(request, f"Started {display_name} on {host}:{port}")
         return redirect("host_dashboard")
 
-    active_list = []
-    dead_ports = []
-    for port, info in running_processes.items():
-        if info["proc"].poll() is not None:
-            dead_ports.append(port)
-        else:
-            active_list.append({
-                "port": port, "type": info["type"], "host": info["host"]
-            })
-    for p in dead_ports:
-        del running_processes[p]
+    # 3. Prepare data for the UI
+    active_list = [
+        {"port": d.port, "type": d.service_type, "host": d.host} 
+        for d in ActiveDaemon.objects.all()
+    ]
 
     return render(request, "node_agent/dashboard.html", {
         "current_ip": current_ip,
         "active_daemons": active_list
     })
 
-
 def stop_daemon_ui(request, port):
-    if port in running_processes:
-        proc = running_processes[port]["proc"]
-        try:
-            proc.terminate()
-            proc.wait(timeout=2)
-        except:
-            proc.kill()
-        del running_processes[port]
+    """Statelessly hunts down and terminates a process by its port or PID."""
+    daemon = ActiveDaemon.objects.filter(port=port).first()
+    killed_something = False
+    
+    # 1. Surgical Port Strike (OS Level)
+    try:
+        if sys.platform != "win32":
+            out = subprocess.check_output(["lsof", "-t", f"-i:{port}"], text=True).strip()
+            for pid_str in out.split("\n"):
+                if pid_str.strip():
+                    os.kill(int(pid_str.strip()), signal.SIGKILL)
+                    killed_something = True
+        else:
+            out = subprocess.check_output(f"netstat -ano | findstr :{port}", shell=True, text=True)
+            for line in out.strip().split("\n"):
+                parts = line.split()
+                if len(parts) >= 5 and "LISTENING" in line:
+                    target_pid = parts[-1]
+                    subprocess.run(["taskkill", "/F", "/PID", target_pid], check=True, stdout=subprocess.DEVNULL)
+                    killed_something = True
+    except Exception:
+        pass # Port scan failed or came up empty
+
+    # 2. Database Cleanup & PID Fallback
+    if daemon:
+        # If the port scan missed it, try killing the exact PID we saved
+        if daemon.pid and not killed_something:
+            try:
+                if sys.platform == "win32":
+                    subprocess.run(["taskkill", "/F", "/PID", str(daemon.pid)], stdout=subprocess.DEVNULL)
+                else:
+                    os.kill(daemon.pid, signal.SIGKILL)
+            except Exception:
+                pass
+        
+        daemon.delete()
         messages.success(request, f"Closed listener on port {port}")
+    elif killed_something:
+        messages.success(request, f"Cleared socket connection on port {port} (Unregistered daemon)")
     else:
-        try:
-            if sys.platform != "win32":
-                out = subprocess.check_output(["lsof", "-t", f"-i:{port}"], text=True).strip()
-                for pid in out.split("\n"):
-                    if pid.strip(): os.kill(int(pid.strip()), signal.SIGKILL)
-            messages.success(request, f"Cleared socket connection on port {port}")
-        except:
-            messages.error(request, f"No process found on port {port}")
-            
+        messages.error(request, f"No active process found on port {port}")
+        
     return redirect("host_dashboard")
+
+# ==============================================================================
+# Unified Network API Endpoints (Called remotely by Infrastructure Manager)
+# ==============================================================================
 
 def api_node_status(request):
     port = int(request.GET.get("port", 8080))
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        return JsonResponse({"online": s.connect_ex(("127.0.0.1", port)) == 0})
+    return JsonResponse({"online": is_port_in_use(port)})
 
 def api_node_start(request):
     return JsonResponse({"status": "success", "message": "Managed by host configuration manager."})

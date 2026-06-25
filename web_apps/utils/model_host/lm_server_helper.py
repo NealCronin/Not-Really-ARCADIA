@@ -23,7 +23,7 @@ class LlamaServer:
         hf_repo: str = None,
         hf_file: str = None,
         hf_mmproj_file: str = None,
-        log_dir: str = "/Users/neal/Documents/UI Interface/pipeline/drone_heatmap/logs"
+        log_dir: str = None
     ):
         self.model_path = model_path
         self.mmproj_path = mmproj_path
@@ -40,7 +40,12 @@ class LlamaServer:
         self.hf_repo = hf_repo
         self.hf_file = hf_file
         self.hf_mmproj_file = hf_mmproj_file
-        self.log_dir = log_dir
+        
+        # Dynamically resolve logs folder relative to this file if none provided
+        if log_dir is None:
+            self.log_dir = str(Path(__file__).resolve().parent.parent.parent.parent / "pipeline" / "drone_heatmap" / "logs")
+        else:
+            self.log_dir = log_dir
 
     def is_port_in_use(self) -> bool:
         """Checks if the target port is already occupied."""
