@@ -9,91 +9,120 @@ class LlamaServer:
     def __init__(
         self,
         model_path: str = None,
-        mmproj_path: str = None,
         host: str = "127.0.0.1",
         port: int = 8080,
         n_gpu_layers: int = -1,
         ctx_size: int = 2048,
         binary_path: str = "llama-server",
-        thinking: bool = False,
+        cpu_moe: int = 0,
+        flash_attn: bool = False,
+        cache_type_k: str = "",
+        cache_type_v: str = "",
+        spec_type: str = "",
+        spec_draft_n_max: int = 0,
+        spec_draft_p_min: float = 0.0,
+        spec_type_secondary: str = "",
+        spec_ngram_mod_n_match: int = 0,
+        jinja: bool = False,
+        chat_template_kwargs: str = "",
+        reasoning_budget: int = 0,
+        reasoning_budget_message: str = "",
         temperature: float = None,
         top_p: float = None,
         min_p: float = None,
+        top_k: int = None,
+        presence_penalty: float = None,
         repeat_penalty: float = None,
         hf_repo: str = None,
         hf_file: str = None,
-        hf_mmproj_file: str = None,
+        hf_mmproj: str = None,
         log_dir: str = "/Users/neal/Documents/UI Interface/pipeline/drone_heatmap/logs"
     ):
         self.model_path = model_path
-        self.mmproj_path = mmproj_path
-        
-        # --- NEW: Auto-clean UI input traps (strips http:// and trailing slashes) ---
         self.host = host.replace("http://", "").replace("https://", "").split("/")[0] if host else "127.0.0.1"
         self.port = port
-        
         self.n_gpu_layers = n_gpu_layers
         self.ctx_size = ctx_size
         self.binary_path = binary_path
-        self.thinking = thinking
+        
+        # Advanced Overrides
+        self.cpu_moe = cpu_moe
+        self.flash_attn = flash_attn
+        self.cache_type_k = cache_type_k
+        self.cache_type_v = cache_type_v
+        self.spec_type = spec_type
+        self.spec_draft_n_max = spec_draft_n_max
+        self.spec_draft_p_min = spec_draft_p_min
+        self.spec_type_secondary = spec_type_secondary
+        self.spec_ngram_mod_n_match = spec_ngram_mod_n_match
+        self.jinja = jinja
+        self.chat_template_kwargs = chat_template_kwargs
+        self.reasoning_budget = reasoning_budget
+        self.reasoning_budget_message = reasoning_budget_message
+
         self.temperature = temperature
         self.top_p = top_p
         self.min_p = min_p
+        self.top_k = top_k
+        self.presence_penalty = presence_penalty
         self.repeat_penalty = repeat_penalty
+        
         self.hf_repo = hf_repo
         self.hf_file = hf_file
-        self.hf_mmproj_file = hf_mmproj_file
+        self.hf_mmproj = hf_mmproj
         self.log_dir = log_dir
 
     def is_port_in_use(self) -> bool:
-        """Checks if the target port is already occupied."""
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 return s.connect_ex((self.host, self.port)) == 0
-        except Exception as e:
-            print(f"[!] Warning: socket check failed for {self.host}:{self.port} - {e}")
-            return False
+        except Exception as e: return False
 
     def start(self, timeout: int = 45) -> bool:
-        """Launches the llama.cpp server inside a visible terminal window."""
-        if self.is_port_in_use():
-            print(f"[!] Port {self.port} is already in use. Assuming server is alive.")
-            return True
+        if self.is_port_in_use(): return True
 
-        cmd = [
-            self.binary_path,
-            "--host", self.host,
-            "--port", str(self.port),
-            "-ngl", str(self.n_gpu_layers),
-            "-c", str(self.ctx_size),
-        ]
+        cmd = [self.binary_path, "--host", self.host, "--port", str(self.port), "-ngl", str(self.n_gpu_layers), "-c", str(self.ctx_size)]
 
-        if self.model_path and os.path.exists(self.model_path):
-            cmd.extend(["-m", self.model_path])
+        if self.model_path and os.path.exists(self.model_path): cmd.extend(["-m", self.model_path])
         
-        if self.mmproj_path and os.path.exists(self.mmproj_path):
-            cmd.extend(["--mmproj", self.mmproj_path])
-
+        # Hugging Face integration
         if self.hf_repo:
             cmd.extend(["--hf-repo", self.hf_repo.strip()])
-            if self.hf_file:
-                cmd.extend(["--hf-file", self.hf_file.strip()])
+            if self.hf_file: cmd.extend(["--hf-file", self.hf_file.strip()])
+            if self.hf_mmproj: cmd.extend(["--hf-mmproj-file", self.hf_mmproj.strip()])
 
         if not (self.model_path and os.path.exists(self.model_path)) and not (self.hf_repo and self.hf_file):
-            raise ValueError("Configuration Error: Must provide either a valid model path or Hugging Face repo parameters.")
+            raise ValueError("Configuration Error: Must provide either a valid model path or Hugging Face repo.")
 
-        if not self.thinking:
-            cmd.extend(["--reasoning", "off"])
+        # Advanced Architecture Flags
+        if self.cpu_moe > 0: cmd.extend(["--n-cpu-moe", str(self.cpu_moe)])
+        if self.flash_attn: cmd.append("--flash-attn")
+        if self.cache_type_k: cmd.extend(["--cache-type-k", self.cache_type_k.strip()])
+        if self.cache_type_v: cmd.extend(["--cache-type-v", self.cache_type_v.strip()])
+        
+        # Speculative Decoding
+        if self.spec_type: cmd.extend(["--spec-type", self.spec_type.strip()])
+        if self.spec_draft_n_max > 0: cmd.extend(["--spec-draft-n-max", str(self.spec_draft_n_max)])
+        if self.spec_draft_p_min > 0: cmd.extend(["--spec-draft-p-min", str(self.spec_draft_p_min)])
+        if self.spec_type_secondary: cmd.extend(["--spec-type-secondary", self.spec_type_secondary.strip()])
+        if self.spec_ngram_mod_n_match > 0: cmd.extend(["--spec-ngram-mod-n-match", str(self.spec_ngram_mod_n_match)])
+        
+        # Reasoning & Templates
+        if self.jinja: cmd.append("--jinja")
+        if self.chat_template_kwargs: cmd.extend(["--chat-template-kwargs", self.chat_template_kwargs.strip()])
+        if self.reasoning_budget > 0: cmd.extend(["--reasoning-budget", str(self.reasoning_budget)])
+        if self.reasoning_budget_message: cmd.extend(["--reasoning-budget-message", self.reasoning_budget_message.strip()])
 
+        # Sampling
         if self.temperature is not None: cmd.extend(["--temp", str(self.temperature)])
         if self.top_p is not None: cmd.extend(["--top-p", str(self.top_p)])
         if self.min_p is not None: cmd.extend(["--min-p", str(self.min_p)])
+        if self.top_k is not None: cmd.extend(["--top-k", str(self.top_k)])
+        if self.presence_penalty is not None: cmd.extend(["--presence-penalty", str(self.presence_penalty)])
         if self.repeat_penalty is not None: cmd.extend(["--repeat-penalty", str(self.repeat_penalty)])
 
         os.makedirs(self.log_dir, exist_ok=True)
         log_path = os.path.join(self.log_dir, f"server_{self.port}.log")
-
-        print(f"[*] Spawning automated llama.cpp repository server on port {self.port}...")
 
         if sys.platform == "win32":
             log_path = os.path.abspath(log_path)
@@ -112,75 +141,30 @@ class LlamaServer:
 
         start_time = time.time()
         while time.time() - start_time < timeout:
-            if self.is_port_in_use():
-                print(f"[+] Server successfully online at http://{self.host}:{self.port}")
-                return True
+            if self.is_port_in_use(): return True
             time.sleep(0.5)
 
-        print("[-] Server startup timed out.")
         return False
 
     def stop(self):
-        """Surgically terminates the server binary process and closes its macOS Terminal window container."""
-        print(f"[*] Shutting down llama.cpp server on port {self.port}...")
-        
         if sys.platform == "win32":
             try:
-                netstat_cmd = f"netstat -ano | findstr :{self.port}"
-                output = subprocess.check_output(netstat_cmd, shell=True, text=True)
-                pids = set()
+                output = subprocess.check_output(f"netstat -ano | findstr :{self.port}", shell=True, text=True)
                 for line in output.strip().split("\n"):
-                    parts = line.split()
-                    if len(parts) >= 5 and "LISTENING" in line:
-                        pids.add(parts[-1])
-                for pid in pids:
-                    subprocess.run(["taskkill", "/F", "/PID", pid], check=True)
-                print("[+] Server process killed cleanly.")
-            except subprocess.CalledProcessError:
-                print(f"[!] No active server found on port {self.port}.")
-                
+                    if "LISTENING" in line: subprocess.run(["taskkill", "/F", "/PID", line.split()[-1]], check=True)
+            except: pass
         elif sys.platform.startswith("linux"):
             try:
-                pid_cmd = f"fuser {self.port}/tcp"
-                pid_output = subprocess.check_output(pid_cmd, shell=True, text=True).strip()
-                if pid_output:
-                    pids = pid_output.split()
-                    for pid in pids:
-                        os.kill(int(pid), signal.SIGTERM)
-                    print("[+] Server process killed cleanly.")
-            except subprocess.CalledProcessError:
-                print(f"[!] No active server found on port {self.port}.")
-                
+                output = subprocess.check_output(f"fuser {self.port}/tcp", shell=True, text=True).strip()
+                if output:
+                    for pid in output.split(): os.kill(int(pid), signal.SIGTERM)
+            except: pass
         else:
             try:
-                pid_cmd = ["lsof", "-t", f"-i:{self.port}"]
-                pid_output = subprocess.check_output(pid_cmd, text=True).strip()
-                if pid_output:
-                    pids = pid_output.split("\n")
-                    for pid in pids:
-                        if pid.strip():
-                            os.kill(int(pid.strip()), signal.SIGKILL)
-                    print("[+] Server process killed cleanly.")
-                
-                applescript_close = f'''
-                tell application "Terminal"
-                    repeat with w in windows
-                        try
-                            set tabList to tabs of w
-                            repeat with t in tabList
-                                if history of t contains "--port {self.port}" then
-                                    close w
-                                    exit repeat
-                                end if
-                            end repeat
-                        catch
-                        end try
-                    </repeat>
-                end tell
-                '''
+                output = subprocess.check_output(["lsof", "-t", f"-i:{self.port}"], text=True).strip()
+                if output:
+                    for pid in output.split("\n"):
+                        if pid.strip(): os.kill(int(pid.strip()), signal.SIGKILL)
+                applescript_close = f'tell application "Terminal"\nrepeat with w in windows\ntry\nrepeat with t in tabs of w\nif history of t contains "--port {self.port}" then\nclose w\nexit repeat\nend if\nend repeat\ncatch\nend try\nend repeat\nend tell'
                 subprocess.Popen(["osascript", "-e", applescript_close])
-                print("[+] Associated macOS Terminal window closed cleanly.")
-            except subprocess.CalledProcessError:
-                print(f"[!] No active server found on port {self.port}.")
-            except Exception as e:
-                print(f"[-] Error stopping server: {e}")
+            except: pass

@@ -15,7 +15,7 @@
 
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div class="md:col-span-3 space-y-2">
-                <label class="text-xs font-semibold text-zinc-700 tracking-tight block">Dataset Root Path Location</label>
+                <label title="The root directory where your dataset images are stored." class="text-xs font-semibold text-zinc-700 tracking-tight block cursor-help">Dataset Root Path Location</label>
                 <div class="flex items-center space-x-2">
                     <div class="relative flex-1">
                         <select name="dataset_root" id="dataset_root_input" class="w-full bg-white border border-zinc-200 rounded-xl px-3.5 py-2 text-xs font-medium text-zinc-800 focus:outline-none focus:border-[#0071e3] transition-colors appearance-none shadow-xs">
@@ -35,8 +35,8 @@
             </div>
             
             <div class="space-y-2">
-                <label class="text-xs font-semibold text-zinc-700 tracking-tight block">Node Agent Orchestrator Port</label>
-                <input type="number" name="node_agent_port" value="{{ env_settings.NODE_AGENT_PORT|default:50000 }}" class="w-full bg-white border border-zinc-200 rounded-xl px-3.5 py-2 text-xs font-medium text-zinc-800 focus:outline-none focus:border-[#0071e3] transition-colors shadow-xs">
+                <label title="The port used by the remote host to listen for 'Start/Stop' commands." class="text-xs font-semibold text-zinc-700 tracking-tight block cursor-help">Host Instruction Port</label>
+                <input type="number" name="instruction_port" value="{{ env_settings.INSTRUCTION_PORT|default:50000 }}" class="w-full bg-white border border-zinc-200 rounded-xl px-3.5 py-2 text-xs font-medium text-zinc-800 focus:outline-none focus:border-[#0071e3] transition-colors shadow-xs">
             </div>
         </div>
     </div>
@@ -50,18 +50,14 @@
             </select>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Network Host (IP)</label>
+                <label title="The IP address to bind the model to (e.g. 100.96.40.81 for Tailscale, 0.0.0.0 for public)." class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block cursor-help">Network Host (IP)</label>
                 <input type="text" name="vlm_host" value="{{ config.VLM_CONFIG.host }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
             </div>
             <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Port Allocation</label>
+                <label title="The specific network port this model will operate on." class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block cursor-help">Port Allocation</label>
                 <input type="number" name="vlm_port" value="{{ config.VLM_CONFIG.port }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
-            </div>
-            <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">GPU Offload Layers (-ngl)</label>
-                <input type="number" name="vlm_ngl" value="{{ config.VLM_CONFIG.n_gpu_layers }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
             </div>
         </div>
 
@@ -71,43 +67,75 @@
                 <label for="vlm_use_vpn" class="text-xs font-semibold text-zinc-600 select-none cursor-pointer">Route over a VPN Tunnel Bridge</label>
             </div>
             <div id="vlm_vpn_ip_container" class="bg-zinc-50 border border-zinc-200/60 p-3 rounded-xl {% if not config.VLM_CONFIG.use_vpn_tunnel %}hidden{% endif %} pt-1">
-                <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block mb-1">Remote VPN IP Address</label>
+                <label title="The exact remote IP address to pipe traffic into." class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block mb-1 cursor-help">Remote VPN IP Address</label>
                 <input type="text" name="vlm_vpn_host" id="vlm_vpn_host" value="{{ config.VLM_CONFIG.vpn_host }}" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-[#0071e3]">
             </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-zinc-100 pt-4">
             <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Hugging Face Repository</label>
+                <label title="The HF Repo ID (e.g. bartowski/Qwen2-VL-7B-Instruct-GGUF)." class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block cursor-help">Hugging Face Repository</label>
                 <input type="text" name="vlm_hf_repo" value="{{ config.VLM_CONFIG.hf_repo }}" placeholder="e.g. unsloth/Qwen3-VL-4B-Instruct-GGUF" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
             </div>
             <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Model Target File (.gguf)</label>
+                <label title="The exact file filter to download (e.g. *Q4_K_M.gguf)." class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block cursor-help">Model Target File (.gguf)</label>
                 <input type="text" name="vlm_hf_file" value="{{ config.VLM_CONFIG.hf_file }}" placeholder="e.g. Qwen3-VL-4B-Instruct-Q4_K_M.gguf" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
             </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 border-t border-zinc-100 pt-4">
             <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Context Window</label>
+                <label title="The maximum number of tokens to hold in memory." class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block cursor-help">Context Window</label>
                 <input type="number" name="vlm_ctx_size" value="{{ config.VLM_CONFIG.ctx_size }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
             </div>
             <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Temperature</label>
-                <input type="text" name="vlm_temp" value="{{ config.VLM_CONFIG.temperature }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
-            </div>
-            <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Min P Sampling</label>
-                <input type="text" name="vlm_min_p" value="{{ config.VLM_CONFIG.min_p }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
-            </div>
-            <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Reasoning Core</label>
-                <select name="vlm_thinking" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
-                    <option value="false" {% if not config.VLM_CONFIG.thinking %}selected{% endif %}>OFF</option>
-                    <option value="true" {% if config.VLM_CONFIG.thinking %}selected{% endif %}>ON</option>
-                </select>
+                <label title="Number of AI layers to offload to the GPU. Set to -1 for maximum offload." class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block cursor-help">GPU Offload Layers (-ngl)</label>
+                <input type="number" name="vlm_ngl" value="{{ config.VLM_CONFIG.n_gpu_layers }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
             </div>
         </div>
+        
+        <details class="group mt-4 border-t border-zinc-100 pt-4">
+            <summary class="text-[11px] font-bold text-[#0071e3] uppercase tracking-wider cursor-pointer list-none flex items-center select-none">
+                <span>Advanced Optimization & Speculative Decoding</span>
+                <span class="ml-2 transform group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                <div class="space-y-1.5 md:col-span-4">
+                    <label title="The Vision Projector file located inside the Hugging Face repo (e.g. *mmproj*)." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">HF Vision Projector File</label>
+                    <input type="text" name="vlm_hf_mmproj" value="{{ config.VLM_CONFIG.hf_mmproj }}" placeholder="e.g. *mmproj-f16.gguf" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#0071e3]">
+                </div>
+                
+                <div class="space-y-1.5"><label title="Optimizes attention mechanism memory." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Flash Attention</label>
+                    <select name="vlm_flash_attn" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"><option value="false" {% if not config.VLM_CONFIG.flash_attn %}selected{% endif %}>OFF</option><option value="true" {% if config.VLM_CONFIG.flash_attn %}selected{% endif %}>ON</option></select>
+                </div>
+                <div class="space-y-1.5"><label title="Evaluates chat using Jinja parsing." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Jinja Templates</label>
+                    <select name="vlm_jinja" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"><option value="false" {% if not config.VLM_CONFIG.jinja %}selected{% endif %}>OFF</option><option value="true" {% if config.VLM_CONFIG.jinja %}selected{% endif %}>ON</option></select>
+                </div>
+                <div class="space-y-1.5 md:col-span-2"><label title="Pass JSON keyword arguments directly to the chat template builder." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Chat Kwargs</label>
+                    <select name="vlm_chat_kwargs" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs">
+                        <option value="" {% if config.VLM_CONFIG.chat_template_kwargs == "" %}selected{% endif %}>Default / None</option>
+                        <option value='{"enable_thinking": true}' {% if config.VLM_CONFIG.chat_template_kwargs == '{"enable_thinking": true}' %}selected{% endif %}>Enable Thinking (True)</option>
+                        <option value='{"enable_thinking": false}' {% if config.VLM_CONFIG.chat_template_kwargs == '{"enable_thinking": false}' %}selected{% endif %}>Disable Thinking (False)</option>
+                    </select>
+                </div>
+
+                <div class="space-y-1.5"><label title="Sampling temperature. Lower is deterministic." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Temperature</label><input type="text" name="vlm_temp" value="{{ config.VLM_CONFIG.temperature }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#0071e3]"></div>
+                <div class="space-y-1.5"><label title="Truncates the lowest probability tokens dynamically." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Min P</label><input type="text" name="vlm_min_p" value="{{ config.VLM_CONFIG.min_p }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#0071e3]"></div>
+                <div class="space-y-1.5"><label title="Limits sampling to the top K likely tokens." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Top K</label><input type="number" name="vlm_top_k" value="{{ config.VLM_CONFIG.top_k|default:40 }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5"><label title="Nucleus sampling threshold." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Top P</label><input type="text" name="vlm_top_p" value="{{ config.VLM_CONFIG.top_p|default:0.95 }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                
+                <div class="space-y-1.5"><label title="KV Cache datatype." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Cache Type K</label><input type="text" name="vlm_cache_k" value="{{ config.VLM_CONFIG.cache_type_k }}" placeholder="q8_0" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5"><label title="KV Cache datatype." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Cache Type V</label><input type="text" name="vlm_cache_v" value="{{ config.VLM_CONFIG.cache_type_v }}" placeholder="q8_0" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5"><label title="CPU threads assigned to Mixture of Experts." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">CPU MoE Layers</label><input type="number" name="vlm_cpu_moe" value="{{ config.VLM_CONFIG.cpu_moe|default:0 }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5"><label title="Presence penalty." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Pres. Penalty</label><input type="text" name="vlm_pres_pen" value="{{ config.VLM_CONFIG.presence_penalty|default:0.0 }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                
+                <div class="space-y-1.5"><label title="Decoding strategy." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Spec Type</label><input type="text" name="vlm_spec_type" value="{{ config.VLM_CONFIG.spec_type }}" placeholder="draft-mtp" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5"><label title="Speculative decoding maximum bounds." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Spec N Max</label><input type="number" name="vlm_spec_n" value="{{ config.VLM_CONFIG.spec_draft_n_max|default:0 }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5"><label title="Speculative decoding minimum bounds." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Spec P Min</label><input type="text" name="vlm_spec_p" value="{{ config.VLM_CONFIG.spec_draft_p_min|default:0.0 }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5"><label title="Secondary strategy." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Spec Sec Type</label><input type="text" name="vlm_spec_sec" value="{{ config.VLM_CONFIG.spec_type_secondary }}" placeholder="ngram-mod" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                
+                <div class="space-y-1.5"><label title="N-Gram match modifier." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">N-Gram Match</label><input type="number" name="vlm_spec_match" value="{{ config.VLM_CONFIG.spec_ngram_mod_n_match|default:0 }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5"><label title="Token limit for DeepSeek thinking algorithms." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Reason Budget</label><input type="number" name="vlm_reason_budget" value="{{ config.VLM_CONFIG.reasoning_budget|default:0 }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5 md:col-span-2"><label title="Terminal sequence injected to finalize reasoning loops." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Reason Msg</label><input type="text" name="vlm_reason_msg" value="{{ config.VLM_CONFIG.reasoning_budget_message }}" placeholder="Final Answer:\n" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+            </div>
+        </details>
     </div>
 
     <div class="bg-white p-6 rounded-2xl border border-zinc-200/80 shadow-xs space-y-6">
@@ -119,18 +147,14 @@
             </select>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Network Host (IP)</label>
+                <label title="The IP address to bind the model to." class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block cursor-help">Network Host (IP)</label>
                 <input type="text" name="llm_host" value="{{ config.LLM_CONFIG.host }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
             </div>
             <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Port Allocation</label>
+                <label title="The network port for this service." class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block cursor-help">Port Allocation</label>
                 <input type="number" name="llm_port" value="{{ config.LLM_CONFIG.port }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
-            </div>
-            <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">GPU Layers</label>
-                <input type="number" name="llm_ngl" value="{{ config.LLM_CONFIG.n_gpu_layers }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
             </div>
         </div>
 
@@ -140,43 +164,70 @@
                 <label for="llm_use_vpn" class="text-xs font-semibold text-zinc-600 select-none cursor-pointer">Route over a VPN Tunnel Bridge</label>
             </div>
             <div id="llm_vpn_ip_container" class="bg-zinc-50 border border-zinc-200/60 p-3 rounded-xl {% if not config.LLM_CONFIG.use_vpn_tunnel %}hidden{% endif %} pt-1">
-                <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block mb-1">Remote VPN IP Address</label>
+                <label title="The target routing IP address." class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block mb-1 cursor-help">Remote VPN IP Address</label>
                 <input type="text" name="llm_vpn_host" id="llm_vpn_host" value="{{ config.LLM_CONFIG.vpn_host }}" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-[#0071e3]">
             </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-zinc-100 pt-4">
             <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Hugging Face Repository</label>
+                <label title="The HF Repo ID." class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block cursor-help">Hugging Face Repository</label>
                 <input type="text" name="llm_hf_repo" value="{{ config.LLM_CONFIG.hf_repo }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
             </div>
             <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Model Target File (.gguf)</label>
+                <label title="The model GGUF to pull." class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block cursor-help">Model Target File (.gguf)</label>
                 <input type="text" name="llm_hf_file" value="{{ config.LLM_CONFIG.hf_file }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
             </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 border-t border-zinc-100 pt-4">
             <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Context Window</label>
+                <label title="Maximum memory length." class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block cursor-help">Context Window</label>
                 <input type="number" name="llm_ctx_size" value="{{ config.LLM_CONFIG.ctx_size }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
             </div>
             <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Temperature</label>
-                <input type="text" name="llm_temp" value="{{ config.LLM_CONFIG.temperature }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
-            </div>
-            <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Min P Sampling</label>
-                <input type="text" name="llm_min_p" value="{{ config.LLM_CONFIG.min_p }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
-            </div>
-            <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Reasoning Core</label>
-                <select name="llm_thinking" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
-                    <option value="false" {% if not config.LLM_CONFIG.thinking %}selected{% endif %}>OFF</option>
-                    <option value="true" {% if config.LLM_CONFIG.thinking %}selected{% endif %}>ON</option>
-                </select>
+                <label title="-1 for maximum offloading." class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block cursor-help">GPU Offload Layers (-ngl)</label>
+                <input type="number" name="llm_ngl" value="{{ config.LLM_CONFIG.n_gpu_layers }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
             </div>
         </div>
+
+        <details class="group mt-4 border-t border-zinc-100 pt-4">
+            <summary class="text-[11px] font-bold text-[#0071e3] uppercase tracking-wider cursor-pointer list-none flex items-center select-none">
+                <span>Advanced Optimization & Speculative Decoding</span>
+                <span class="ml-2 transform group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                <div class="space-y-1.5"><label title="Optimizes attention footprint." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Flash Attention</label>
+                    <select name="llm_flash_attn" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"><option value="false" {% if not config.LLM_CONFIG.flash_attn %}selected{% endif %}>OFF</option><option value="true" {% if config.LLM_CONFIG.flash_attn %}selected{% endif %}>ON</option></select>
+                </div>
+                <div class="space-y-1.5"><label title="Jinja processor." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Jinja Templates</label>
+                    <select name="llm_jinja" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"><option value="false" {% if not config.LLM_CONFIG.jinja %}selected{% endif %}>OFF</option><option value="true" {% if config.LLM_CONFIG.jinja %}selected{% endif %}>ON</option></select>
+                </div>
+                <div class="space-y-1.5 md:col-span-2"><label title="Keyword arguments for the chat template." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Chat Kwargs</label>
+                    <select name="llm_chat_kwargs" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs">
+                        <option value="" {% if config.LLM_CONFIG.chat_template_kwargs == "" %}selected{% endif %}>Default / None</option>
+                        <option value='{"enable_thinking": true}' {% if config.LLM_CONFIG.chat_template_kwargs == '{"enable_thinking": true}' %}selected{% endif %}>Enable Thinking (True)</option>
+                        <option value='{"enable_thinking": false}' {% if config.LLM_CONFIG.chat_template_kwargs == '{"enable_thinking": false}' %}selected{% endif %}>Disable Thinking (False)</option>
+                    </select>
+                </div>
+
+                <div class="space-y-1.5"><label title="Sampling heat." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Temperature</label><input type="text" name="llm_temp" value="{{ config.LLM_CONFIG.temperature }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800"></div>
+                <div class="space-y-1.5"><label title="Threshold culling." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Min P</label><input type="text" name="llm_min_p" value="{{ config.LLM_CONFIG.min_p }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800"></div>
+                <div class="space-y-1.5"><label title="Token pool size." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Top K</label><input type="number" name="llm_top_k" value="{{ config.LLM_CONFIG.top_k|default:40 }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5"><label title="Nucleus sampling." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Top P</label><input type="text" name="llm_top_p" value="{{ config.LLM_CONFIG.top_p|default:0.95 }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                
+                <div class="space-y-1.5"><label title="Quantized K Cache." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Cache Type K</label><input type="text" name="llm_cache_k" value="{{ config.LLM_CONFIG.cache_type_k }}" placeholder="q8_0" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5"><label title="Quantized V Cache." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Cache Type V</label><input type="text" name="llm_cache_v" value="{{ config.LLM_CONFIG.cache_type_v }}" placeholder="q8_0" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5"><label title="MoE multi-threading layer allocation." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">CPU MoE Layers</label><input type="number" name="llm_cpu_moe" value="{{ config.LLM_CONFIG.cpu_moe|default:0 }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5"><label title="Repeating token damper." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Pres. Penalty</label><input type="text" name="llm_pres_pen" value="{{ config.LLM_CONFIG.presence_penalty|default:0.0 }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                
+                <div class="space-y-1.5"><label title="Base spec method." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Spec Type</label><input type="text" name="llm_spec_type" value="{{ config.LLM_CONFIG.spec_type }}" placeholder="draft-mtp" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5"><label title="Spec ceiling limit." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Spec N Max</label><input type="number" name="llm_spec_n" value="{{ config.LLM_CONFIG.spec_draft_n_max|default:0 }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5"><label title="Spec floor limit." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Spec P Min</label><input type="text" name="llm_spec_p" value="{{ config.LLM_CONFIG.spec_draft_p_min|default:0.0 }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5"><label title="Auxiliary method." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Spec Sec Type</label><input type="text" name="llm_spec_sec" value="{{ config.LLM_CONFIG.spec_type_secondary }}" placeholder="ngram-mod" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                
+                <div class="space-y-1.5"><label title="N-Gram token lookup limit." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">N-Gram Match</label><input type="number" name="llm_spec_match" value="{{ config.LLM_CONFIG.spec_ngram_mod_n_match|default:0 }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5"><label title="Token wall for thought processors." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Reason Budget</label><input type="number" name="llm_reason_budget" value="{{ config.LLM_CONFIG.reasoning_budget|default:0 }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5 md:col-span-2"><label title="Finalizer text string to truncate thinking." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Reason Msg</label><input type="text" name="llm_reason_msg" value="{{ config.LLM_CONFIG.reasoning_budget_message }}" placeholder="Final Answer:\n" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+            </div>
+        </details>
     </div>
 
     <div class="bg-white p-6 rounded-2xl border border-zinc-200/80 shadow-xs space-y-6">
@@ -188,18 +239,14 @@
             </select>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Network Host (IP)</label>
+                <label title="The IP address to bind the model to." class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block cursor-help">Network Host (IP)</label>
                 <input type="text" name="conv_host" value="{{ config.CONV_LLM_CONFIG.host }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
             </div>
             <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Port Allocation</label>
+                <label title="The network port for this service." class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block cursor-help">Port Allocation</label>
                 <input type="number" name="conv_port" value="{{ config.CONV_LLM_CONFIG.port }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
-            </div>
-            <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">GPU Layers</label>
-                <input type="number" name="conv_ngl" value="{{ config.CONV_LLM_CONFIG.n_gpu_layers }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
             </div>
         </div>
 
@@ -209,43 +256,70 @@
                 <label for="conv_use_vpn" class="text-xs font-semibold text-zinc-600 select-none cursor-pointer">Route over a VPN Tunnel Bridge</label>
             </div>
             <div id="conv_vpn_ip_container" class="bg-zinc-50 border border-zinc-200/60 p-3 rounded-xl {% if not config.CONV_LLM_CONFIG.use_vpn_tunnel %}hidden{% endif %} pt-1">
-                <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block mb-1">Remote VPN IP Address</label>
+                <label title="The target routing IP address." class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block mb-1 cursor-help">Remote VPN IP Address</label>
                 <input type="text" name="conv_vpn_host" id="conv_vpn_host" value="{{ config.CONV_LLM_CONFIG.vpn_host }}" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-[#0071e3]">
             </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-zinc-100 pt-4">
             <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Hugging Face Repository</label>
+                <label title="The HF Repo ID." class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block cursor-help">Hugging Face Repository</label>
                 <input type="text" name="conv_hf_repo" value="{{ config.CONV_LLM_CONFIG.hf_repo }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
             </div>
             <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Model Target File (.gguf)</label>
+                <label title="The model GGUF to pull." class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block cursor-help">Model Target File (.gguf)</label>
                 <input type="text" name="conv_hf_file" value="{{ config.CONV_LLM_CONFIG.hf_file }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
             </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 border-t border-zinc-100 pt-4">
             <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Context Window</label>
+                <label title="Maximum memory length." class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block cursor-help">Context Window</label>
                 <input type="number" name="conv_ctx_size" value="{{ config.CONV_LLM_CONFIG.ctx_size }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
             </div>
             <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Temperature</label>
-                <input type="text" name="conv_temp" value="{{ config.CONV_LLM_CONFIG.temperature }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
-            </div>
-            <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Min P Sampling</label>
-                <input type="text" name="conv_min_p" value="{{ config.CONV_LLM_CONFIG.min_p }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
-            </div>
-            <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Reasoning Core</label>
-                <select name="conv_thinking" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
-                    <option value="false" {% if not config.CONV_LLM_CONFIG.thinking %}selected{% endif %}>OFF</option>
-                    <option value="true" {% if config.CONV_LLM_CONFIG.thinking %}selected{% endif %}>ON</option>
-                </select>
+                <label title="-1 for maximum offloading." class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block cursor-help">GPU Offload Layers (-ngl)</label>
+                <input type="number" name="conv_ngl" value="{{ config.CONV_LLM_CONFIG.n_gpu_layers }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:bg-white focus:border-[#0071e3] transition-all">
             </div>
         </div>
+
+        <details class="group mt-4 border-t border-zinc-100 pt-4">
+            <summary class="text-[11px] font-bold text-[#0071e3] uppercase tracking-wider cursor-pointer list-none flex items-center select-none">
+                <span>Advanced Optimization & Speculative Decoding</span>
+                <span class="ml-2 transform group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                <div class="space-y-1.5"><label title="Optimizes attention footprint." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Flash Attention</label>
+                    <select name="conv_flash_attn" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"><option value="false" {% if not config.CONV_LLM_CONFIG.flash_attn %}selected{% endif %}>OFF</option><option value="true" {% if config.CONV_LLM_CONFIG.flash_attn %}selected{% endif %}>ON</option></select>
+                </div>
+                <div class="space-y-1.5"><label title="Jinja processor." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Jinja Templates</label>
+                    <select name="conv_jinja" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"><option value="false" {% if not config.CONV_LLM_CONFIG.jinja %}selected{% endif %}>OFF</option><option value="true" {% if config.CONV_LLM_CONFIG.jinja %}selected{% endif %}>ON</option></select>
+                </div>
+                <div class="space-y-1.5 md:col-span-2"><label title="Keyword arguments for the chat template." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Chat Kwargs</label>
+                    <select name="conv_chat_kwargs" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs">
+                        <option value="" {% if config.CONV_LLM_CONFIG.chat_template_kwargs == "" %}selected{% endif %}>Default / None</option>
+                        <option value='{"enable_thinking": true}' {% if config.CONV_LLM_CONFIG.chat_template_kwargs == '{"enable_thinking": true}' %}selected{% endif %}>Enable Thinking (True)</option>
+                        <option value='{"enable_thinking": false}' {% if config.CONV_LLM_CONFIG.chat_template_kwargs == '{"enable_thinking": false}' %}selected{% endif %}>Disable Thinking (False)</option>
+                    </select>
+                </div>
+
+                <div class="space-y-1.5"><label title="Sampling heat." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Temperature</label><input type="text" name="conv_temp" value="{{ config.CONV_LLM_CONFIG.temperature }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800"></div>
+                <div class="space-y-1.5"><label title="Threshold culling." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Min P</label><input type="text" name="conv_min_p" value="{{ config.CONV_LLM_CONFIG.min_p }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs text-zinc-800"></div>
+                <div class="space-y-1.5"><label title="Token pool size." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Top K</label><input type="number" name="conv_top_k" value="{{ config.CONV_LLM_CONFIG.top_k|default:40 }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5"><label title="Nucleus sampling." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Top P</label><input type="text" name="conv_top_p" value="{{ config.CONV_LLM_CONFIG.top_p|default:0.95 }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                
+                <div class="space-y-1.5"><label title="Quantized K Cache." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Cache Type K</label><input type="text" name="conv_cache_k" value="{{ config.CONV_LLM_CONFIG.cache_type_k }}" placeholder="q8_0" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5"><label title="Quantized V Cache." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Cache Type V</label><input type="text" name="conv_cache_v" value="{{ config.CONV_LLM_CONFIG.cache_type_v }}" placeholder="q8_0" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5"><label title="MoE multi-threading layer allocation." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">CPU MoE Layers</label><input type="number" name="conv_cpu_moe" value="{{ config.CONV_LLM_CONFIG.cpu_moe|default:0 }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5"><label title="Repeating token damper." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Pres. Penalty</label><input type="text" name="conv_pres_pen" value="{{ config.CONV_LLM_CONFIG.presence_penalty|default:0.0 }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                
+                <div class="space-y-1.5"><label title="Base spec method." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Spec Type</label><input type="text" name="conv_spec_type" value="{{ config.CONV_LLM_CONFIG.spec_type }}" placeholder="draft-mtp" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5"><label title="Spec ceiling limit." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Spec N Max</label><input type="number" name="conv_spec_n" value="{{ config.CONV_LLM_CONFIG.spec_draft_n_max|default:0 }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5"><label title="Spec floor limit." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Spec P Min</label><input type="text" name="conv_spec_p" value="{{ config.CONV_LLM_CONFIG.spec_draft_p_min|default:0.0 }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5"><label title="Auxiliary method." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Spec Sec Type</label><input type="text" name="conv_spec_sec" value="{{ config.CONV_LLM_CONFIG.spec_type_secondary }}" placeholder="ngram-mod" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                
+                <div class="space-y-1.5"><label title="N-Gram token lookup limit." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">N-Gram Match</label><input type="number" name="conv_spec_match" value="{{ config.CONV_LLM_CONFIG.spec_ngram_mod_n_match|default:0 }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5"><label title="Token wall for thought processors." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Reason Budget</label><input type="number" name="conv_reason_budget" value="{{ config.CONV_LLM_CONFIG.reasoning_budget|default:0 }}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+                <div class="space-y-1.5 md:col-span-2"><label title="Finalizer text string to truncate thinking." class="text-[11px] font-bold text-zinc-500 uppercase cursor-help">Reason Msg</label><input type="text" name="conv_reason_msg" value="{{ config.CONV_LLM_CONFIG.reasoning_budget_message }}" placeholder="Final Answer:\n" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-1.5 text-xs"></div>
+            </div>
+        </details>
     </div>
 
     <div class="bg-white p-6 rounded-2xl border border-zinc-200/80 shadow-xs space-y-6">
@@ -309,11 +383,8 @@
     function toggleVpnIpVisibility(prefix) {
         const checkbox = document.getElementById(`${prefix}_use_vpn`);
         const container = document.getElementById(`${prefix}_vpn_ip_container`);
-        if (checkbox.checked) {
-            container.classList.remove('hidden');
-        } else {
-            container.classList.add('hidden');
-        }
+        if (checkbox.checked) container.classList.remove('hidden');
+        else container.classList.add('hidden');
     }
 
     function triggerNativeSystemBrowser() {
