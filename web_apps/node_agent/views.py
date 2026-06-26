@@ -44,40 +44,43 @@ def is_pid_running(pid: int) -> bool:
         return False
 
 def host_dashboard(request):
-    current_ip = get_local_ip()
-
-    # 1. State Cleanup: Remove DB entries if the process died or port was closed externally
+    # 1. State Cleanup
     for daemon in ActiveDaemon.objects.all():
         if not is_pid_running(daemon.pid) and not is_port_in_use(daemon.port):
             daemon.delete()
 
-    # 2. Handle Starting a New Service
+    active_daemon = ActiveDaemon.objects.first()
+
+    # 2. Handle Starting
     if request.method == "POST":
-        service_type = request.POST.get("service_type", "llm_agent").strip()
-        host = request.POST.get("host", "0.0.0.0").strip()
-        port = int(request.POST.get("port", 8705))
+        if active_daemon:
+            messages.error(request, "A dispatcher is already active. Close it first.")
+            return redirect("host_dashboard")
+
+        # We no longer ask for service_type. This is ALWAYS the Node Dispatcher.
+        host = request.POST.get("host", "127.0.0.1").strip()
+        port = int(request.POST.get("port", 50000))
 
         if is_port_in_use(port) or ActiveDaemon.objects.filter(port=port).exists():
             messages.error(request, f"Port {port} is currently occupied.")
             return redirect("host_dashboard")
 
-        if service_type == "sam3_service":
-            script_path = project_root / "web_apps" / "utils" / "model_host" / "sam3_server.py"
-            display_name = "SAM3"
-        else:
-            script_path = project_root / "web_apps" / "node_agent" / "main.py"
-            display_name = "Language Model"
+        # Always route to main.py
+        script_path = project_root / "web_apps" / "node_agent" / "main.py"
+        display_name = "Node Dispatcher"
 
-        # Spawn the process detached
+        log_dir = project_root / "pipeline" / "drone_heatmap" / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_file = open(log_dir / "node_agent.log", "a")
+
         proc = subprocess.Popen(
             [sys.executable, str(script_path), "--host", host, "--port", str(port)],
-            stdout=subprocess.DEVNULL, 
-            stderr=subprocess.DEVNULL, 
+            stdout=log_file, 
+            stderr=subprocess.STDOUT, 
             text=True, 
             cwd=str(script_path.parent)
         )
 
-        # Save state to Database instead of volatile memory
         ActiveDaemon.objects.create(
             service_type=display_name,
             host=host,
@@ -85,18 +88,15 @@ def host_dashboard(request):
             pid=proc.pid
         )
 
-        messages.success(request, f"Started {display_name} on {host}:{port}")
+        messages.success(request, f"Dispatcher bound to {host}:{port}")
         return redirect("host_dashboard")
 
-    # 3. Prepare data for the UI
-    active_list = [
-        {"port": d.port, "type": d.service_type, "host": d.host} 
-        for d in ActiveDaemon.objects.all()
-    ]
+    return render(request, "node_agent/dashboard.html", {
+        "active_daemon": active_daemon
+    })
 
     return render(request, "node_agent/dashboard.html", {
-        "current_ip": current_ip,
-        "active_daemons": active_list
+        "active_daemon": active_daemon
     })
 
 def stop_daemon_ui(request, port):

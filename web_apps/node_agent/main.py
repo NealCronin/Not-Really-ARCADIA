@@ -17,11 +17,13 @@ app = FastAPI(title="Infrastructure Compute Node Agent Daemon")
 
 class StartNodePayload(BaseModel):
     model_type: str
+    port: int          # <-- Added dynamic port
     hf_repo: str
     hf_file: str
-    n_gpu_layers: int = 0
-    ctx_size: int = 4096
+    n_gpu_layers: int = -1
+    ctx_size: int = 2048
     temperature: float = 0.1
+    min_p: float = 0.05
     thinking: bool = False
 
 
@@ -33,26 +35,34 @@ async def check_status(port: int):
 
 @app.post("/api/node/start")
 async def start_node(payload: StartNodePayload):
-    port_map = {"vlm": 8600, "llm": 8081, "conv": 8082}
-    target_port = port_map.get(payload.model_type, 8080)
+    # 1. The hardcoded port_map is completely gone.
+    # We now strictly trust the port sent by the client.
+    target_port = payload.port
+
+    print("\n" + "="*50)
+    print(f"📡 [NODE AGENT] RECEIVED START COMMAND")
+    print(f"Target Engine: {payload.model_type.upper()} on PORT {target_port}")
+    print(f"Payload Data: {payload.model_dump_json(indent=2)}")
+    print("="*50 + "\n")
 
     server = LlamaServer(
         host="0.0.0.0", 
-        port=target_port,
+        port=target_port,  # <-- Injected dynamically here
         n_gpu_layers=payload.n_gpu_layers,
         ctx_size=payload.ctx_size,
         thinking=payload.thinking,
         temperature=payload.temperature,
+        min_p=payload.min_p,
         hf_repo=payload.hf_repo,
         hf_file=payload.hf_file,
         log_dir=str(Path(__file__).resolve().parent / "logs")
     )
 
     if server.is_port_in_use():
-        return {"status": "active", "message": "Inference process already online."}
+        return {"status": "active", "message": f"Inference process already online at port {target_port}."}
 
     if server.start():
-        return {"status": "success", "message": f"Engine {payload.model_type.upper()} spawned successfully."}
+        return {"status": "success", "message": f"Engine {payload.model_type.upper()} spawned successfully on port {target_port}."}
     else:
         raise HTTPException(status_code=500, detail="Hardware optimization binary timeout.")
 
@@ -88,7 +98,7 @@ if __name__ == "__main__":
     import uvicorn
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="0.0.0.0")
-    parser.add_argument("--port", type=int, default=8705)
+    parser.add_argument("--port", type=int, default=50000)
     args = parser.parse_args()
     
     # Spin up our standard web server framework cleanly

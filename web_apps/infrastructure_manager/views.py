@@ -41,7 +41,7 @@ def save_config(data):
 def get_node_agent_url(model_config, env_config):
     """Determines the correct IP to ping the Node Agent based on VPN settings."""
     host_ip = model_config.get("vpn_host") if model_config.get("use_vpn_tunnel") else model_config.get("host")
-    port = env_config.get("NODE_AGENT_PORT", 8705)
+    port = env_config.get("NODE_AGENT_PORT", 50000)
     return f"http://{host_ip}:{port}/api/node"
 
 # ==============================================================================
@@ -56,7 +56,7 @@ def config_page(request):
         # Global Environment
         config.setdefault("ENV_SETTINGS", {})
         config["ENV_SETTINGS"]["DATASET_ROOT"] = request.POST.get("dataset_root", "")
-        config["ENV_SETTINGS"]["NODE_AGENT_PORT"] = int(request.POST.get("node_agent_port", 8705))
+        config["ENV_SETTINGS"]["NODE_AGENT_PORT"] = int(request.POST.get("node_agent_port", 50000))
         
         # Model Sections mapping
         sections = {
@@ -143,13 +143,16 @@ def control_model(request, model_type, action):
         if mode == "remote":
             # 1. Ask remote Node Agent to spin up the binary
             node_url = get_node_agent_url(model_config, config.get("ENV_SETTINGS", {}))
+            
             payload = {
                 "model_type": model_type,
+                "port": local_port,   # <--- Inject the port straight from the config!
                 "hf_repo": model_config.get("hf_repo", ""),
                 "hf_file": model_config.get("hf_file", ""),
-                "n_gpu_layers": model_config.get("n_gpu_layers", 0),
-                "ctx_size": model_config.get("ctx_size", 4096),
+                "n_gpu_layers": model_config.get("n_gpu_layers", -1),
+                "ctx_size": model_config.get("ctx_size", 2048),
                 "temperature": model_config.get("temperature", 0.1),
+                "min_p": model_config.get("min_p", 0.05),
                 "thinking": model_config.get("thinking", False)
             }
             try:
@@ -187,7 +190,7 @@ def control_model(request, model_type, action):
             # 2. Tell Node Agent to kill process
             node_url = get_node_agent_url(model_config, config.get("ENV_SETTINGS", {}))
             try:
-                requests.post(f"{node_url}/stop?port={local_port}", timeout=60)
+                requests.post(f"{node_url}/stop?port={local_port}", timeout=5)
                 messages.success(request, f"{model_type.upper()} shut down remotely and bridge closed.")
             except:
                 messages.warning(request, f"Local bridge closed, but could not reach remote node to kill process.")
