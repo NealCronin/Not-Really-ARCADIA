@@ -144,9 +144,13 @@ def control_model(request, model_type, action):
             # 1. Ask remote Node Agent to spin up the binary
             node_url = get_node_agent_url(model_config, config.get("ENV_SETTINGS", {}))
             
+            local_host = model_config.get("host", "127.0.0.1")
+            remote_host = model_config.get("vpn_host") if model_config.get("use_vpn_tunnel") else local_host
+
             payload = {
                 "model_type": model_type,
-                "port": local_port,   # <--- Inject the port straight from the config!
+                "port": local_port,
+                "host": remote_host,  # <--- 1. Tell the Host exactly which IP to bind to
                 "hf_repo": model_config.get("hf_repo", ""),
                 "hf_file": model_config.get("hf_file", ""),
                 "n_gpu_layers": model_config.get("n_gpu_layers", -1),
@@ -168,14 +172,15 @@ def control_model(request, model_type, action):
             if model_type in active_bridges:
                 active_bridges[model_type].stop()
             
-            remote_host = model_config.get("vpn_host") if model_config.get("use_vpn_tunnel") else model_config.get("host")
-            bridge = VPNTunnelBridge(local_port, remote_host, local_port) # Assuming remote port == local port
+            # 3. Pass all 4 parameters: (Local IP, Local Port, Tailscale IP, Remote Port)
+            bridge = VPNTunnelBridge(local_host, local_port, remote_host, local_port)
+            
             if bridge.start():
                 active_bridges[model_type] = bridge
-                messages.success(request, f"{model_type.upper()} started remotely. Bridge secured on local port {local_port}.")
+                messages.success(request, f"{model_type.upper()} started remotely. Bridge secured.")
             else:
-                messages.error(request, f"Remote started, but local Bridge Proxy failed to bind on port {local_port}.")
-
+                messages.error(request, f"Remote started, but local Bridge Proxy failed to bind.")
+                
         elif mode == "local":
             messages.info(request, "Local orchestration is under construction. Ensure server is running manually for now.")
             # Implementation for local subprocesses goes here using lm_server_helper

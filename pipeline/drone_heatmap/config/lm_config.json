@@ -1,7 +1,7 @@
 {
     "ENVIRONMENT_SETTINGS": {
         "DATASET_ROOT": "",
-        "NODE_AGENT_PORT": 8705,
+        "NODE_AGENT_PORT": 50000,
         "recent_dataset_paths": []
     },
     "VLM_CONFIG": {
@@ -73,6 +73,6 @@
     },
     "ENV_SETTINGS": {
         "DATASET_ROOT": "",
-        "NODE_AGENT_PORT": 8705
+        "NODE_AGENT_PORT": 50000
     }
 }

@@ -3,8 +3,8 @@ import threading
 
 class VPNTunnelBridge:
     """A generalized background network socket proxy that pipes local port calls through a VPN tunnel."""
-    def __init__(self, local_port: int, remote_host: str, remote_port: int):
-        self.local_host = "127.0.0.1"
+    def __init__(self, local_host: str, local_port: int, remote_host: str, remote_port: int):
+        self.local_host = local_host  # <--- Make this dynamic instead of "127.0.0.1"
         self.local_port = local_port
         self.remote_host = remote_host
         self.remote_port = remote_port

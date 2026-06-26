@@ -17,7 +17,8 @@ app = FastAPI(title="Infrastructure Compute Node Agent Daemon")
 
 class StartNodePayload(BaseModel):
     model_type: str
-    port: int          # <-- Added dynamic port
+    port: int
+    host: str = "127.0.0.1"          # <-- Added dynamic port
     hf_repo: str
     hf_file: str
     n_gpu_layers: int = -1
@@ -46,7 +47,7 @@ async def start_node(payload: StartNodePayload):
     print("="*50 + "\n")
 
     server = LlamaServer(
-        host="0.0.0.0", 
+        host=payload.host, 
         port=target_port,  # <-- Injected dynamically here
         n_gpu_layers=payload.n_gpu_layers,
         ctx_size=payload.ctx_size,

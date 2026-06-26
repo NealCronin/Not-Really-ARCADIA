@@ -24,10 +24,11 @@ def get_local_ip():
     except:
         return "127.0.0.1"
 
-def is_port_in_use(port: int) -> bool:
-    """Helper to check if a port is currently bound."""
+def is_port_in_use(port: int, host: str = "127.0.0.1") -> bool:
+    """Helper to check if a port is currently bound on the specified interface."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        return s.connect_ex(("127.0.0.1", port)) == 0
+        check_host = "127.0.0.1" if host == "0.0.0.0" else host # <--- Add this safety check
+        return s.connect_ex((check_host, port)) == 0
 
 def is_pid_running(pid: int) -> bool:
     """Cross-platform check to see if a specific PID is still alive."""
@@ -44,9 +45,11 @@ def is_pid_running(pid: int) -> bool:
         return False
 
 def host_dashboard(request):
+    current_ip = get_local_ip()
+
     # 1. State Cleanup
     for daemon in ActiveDaemon.objects.all():
-        if not is_pid_running(daemon.pid) and not is_port_in_use(daemon.port):
+        if not is_pid_running(daemon.pid) and not is_port_in_use(daemon.port, daemon.host): # <--- Pass daemon.host
             daemon.delete()
 
     active_daemon = ActiveDaemon.objects.first()
@@ -57,12 +60,11 @@ def host_dashboard(request):
             messages.error(request, "A dispatcher is already active. Close it first.")
             return redirect("host_dashboard")
 
-        # We no longer ask for service_type. This is ALWAYS the Node Dispatcher.
-        host = request.POST.get("host", "127.0.0.1").strip()
+        host = request.POST.get("host", "0.0.0.0").strip()
         port = int(request.POST.get("port", 50000))
 
-        if is_port_in_use(port) or ActiveDaemon.objects.filter(port=port).exists():
-            messages.error(request, f"Port {port} is currently occupied.")
+        if is_port_in_use(port, host) or ActiveDaemon.objects.filter(port=port).exists(): # <--- Pass host
+            messages.error(request, f"Port {port} is currently occupied on {host}.")
             return redirect("host_dashboard")
 
         # Always route to main.py
