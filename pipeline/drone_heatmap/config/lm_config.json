@@ -5,10 +5,10 @@
         "recent_dataset_paths": []
     },
     "VLM_CONFIG": {
-        "mode": "remote",
+        "mode": "local",
         "host": "127.0.0.1",
         "port": 8600,
-        "use_vpn_tunnel": true,
+        "use_vpn_tunnel": false,
         "vpn_host": "100.96.40.81",
         "n_gpu_layers": 10,
         "local_model_path": "",

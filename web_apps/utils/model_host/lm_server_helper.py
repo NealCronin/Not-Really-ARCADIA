@@ -23,12 +23,15 @@ class LlamaServer:
         hf_repo: str = None,
         hf_file: str = None,
         hf_mmproj_file: str = None,
-        log_dir: str = None
+        log_dir: str = "/Users/neal/Documents/UI Interface/pipeline/drone_heatmap/logs"
     ):
         self.model_path = model_path
         self.mmproj_path = mmproj_path
-        self.host = host
+        
+        # --- NEW: Auto-clean UI input traps (strips http:// and trailing slashes) ---
+        self.host = host.replace("http://", "").replace("https://", "").split("/")[0] if host else "127.0.0.1"
         self.port = port
+        
         self.n_gpu_layers = n_gpu_layers
         self.ctx_size = ctx_size
         self.binary_path = binary_path
@@ -40,17 +43,16 @@ class LlamaServer:
         self.hf_repo = hf_repo
         self.hf_file = hf_file
         self.hf_mmproj_file = hf_mmproj_file
-        
-        # Dynamically resolve logs folder relative to this file if none provided
-        if log_dir is None:
-            self.log_dir = str(Path(__file__).resolve().parent.parent.parent.parent / "pipeline" / "drone_heatmap" / "logs")
-        else:
-            self.log_dir = log_dir
+        self.log_dir = log_dir
 
     def is_port_in_use(self) -> bool:
         """Checks if the target port is already occupied."""
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            return s.connect_ex((self.host, self.port)) == 0
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                return s.connect_ex((self.host, self.port)) == 0
+        except Exception as e:
+            print(f"[!] Warning: socket check failed for {self.host}:{self.port} - {e}")
+            return False
 
     def start(self, timeout: int = 45) -> bool:
         """Launches the llama.cpp server inside a visible terminal window."""
@@ -93,29 +95,16 @@ class LlamaServer:
 
         print(f"[*] Spawning automated llama.cpp repository server on port {self.port}...")
 
-        os.makedirs(self.log_dir, exist_ok=True)
-        log_path = os.path.join(self.log_dir, f"server_{self.port}.log")
-
-        print(f"[*] Spawning automated llama.cpp repository server on port {self.port}...")
-
         if sys.platform == "win32":
-            # 1. Force the path to use absolute Windows formatting
             log_path = os.path.abspath(log_path)
-            
-            # 2. Build the core command string
             cmd_parts = [f'"{arg}"' if " " in arg else arg for arg in cmd]
             raw_cmd = " ".join(cmd_parts)
-            
-            # 3. CRITICAL: Combine everything into a single string expression.
-            # Wrapping raw_cmd in quotes ensures cmd.exe strips them and parses the contents perfectly.
             command_string = f'cmd /k "{raw_cmd}"'
-            
-            # 4. Pass the string directly (NOT as a list) to bypass Python auto-escaping
             subprocess.Popen(command_string, creationflags=subprocess.CREATE_NEW_CONSOLE)
         elif sys.platform.startswith("linux"):
             bash_cmd = ["bash", "-c", " ".join(f'"{arg}"' for arg in cmd) + f" 2>&1 | tee '{log_path}'; exec bash"]
             subprocess.Popen(["gnome-terminal", "--"] + bash_cmd)
-        else:  # macOS
+        else: 
             cmd_str = " ".join(f"'{arg}'" for arg in cmd) + f" 2>&1 | tee '{log_path}'"
             escaped_cmd_str = cmd_str.replace('"', '\\"')
             applescript_cmd = f'tell application "Terminal" to do script "{escaped_cmd_str}"'
@@ -162,9 +151,8 @@ class LlamaServer:
             except subprocess.CalledProcessError:
                 print(f"[!] No active server found on port {self.port}.")
                 
-        else:  # macOS
+        else:
             try:
-                # 1. Kill the background binary process running on this port
                 pid_cmd = ["lsof", "-t", f"-i:{self.port}"]
                 pid_output = subprocess.check_output(pid_cmd, text=True).strip()
                 if pid_output:
@@ -174,7 +162,6 @@ class LlamaServer:
                             os.kill(int(pid.strip()), signal.SIGKILL)
                     print("[+] Server process killed cleanly.")
                 
-                # 2. FIXED: AppleScript scans for the specific terminal session history containing the port, then closes the window
                 applescript_close = f'''
                 tell application "Terminal"
                     repeat with w in windows
