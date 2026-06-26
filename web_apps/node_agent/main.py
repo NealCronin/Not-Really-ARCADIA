@@ -14,41 +14,33 @@ from lm_server_helper import LlamaServer
 
 app = FastAPI(title="Infrastructure Compute Node Agent Daemon")
 
-
 class StartNodePayload(BaseModel):
     model_type: str
-    port: int
-    host: str = "127.0.0.1"          # <-- Added dynamic port
+    port: int                     # Dynamic Port
+    host: str = "127.0.0.1"       # Dynamic IP (e.g. 100.96.40.81)
     hf_repo: str
     hf_file: str
     n_gpu_layers: int = -1
     ctx_size: int = 2048
     temperature: float = 0.1
-    min_p: float = 0.05
+    min_p: float = 0.05           # New Parameter
     thinking: bool = False
 
-
 @app.get("/api/node/status")
-async def check_status(port: int):
-    server = LlamaServer(port=port)
+async def check_status(port: int, host: str = "127.0.0.1"):
+    server = LlamaServer(port=port, host=host)
     return {"online": server.is_port_in_use()}
-
 
 @app.post("/api/node/start")
 async def start_node(payload: StartNodePayload):
-    # 1. The hardcoded port_map is completely gone.
-    # We now strictly trust the port sent by the client.
-    target_port = payload.port
+    # 1. Prevent the 500 error if UI fields are blank
+    if not payload.hf_repo or not payload.hf_file:
+        raise HTTPException(status_code=400, detail="Missing Hugging Face repo or file name. Please fill these out in the Client Settings.")
 
-    print("\n" + "="*50)
-    print(f"📡 [NODE AGENT] RECEIVED START COMMAND")
-    print(f"Target Engine: {payload.model_type.upper()} on PORT {target_port}")
-    print(f"Payload Data: {payload.model_dump_json(indent=2)}")
-    print("="*50 + "\n")
-
+    # 2. Pass the dynamic UI parameters directly to the server helper
     server = LlamaServer(
-        host=payload.host, 
-        port=target_port,  # <-- Injected dynamically here
+        host=payload.host,      
+        port=payload.port,
         n_gpu_layers=payload.n_gpu_layers,
         ctx_size=payload.ctx_size,
         thinking=payload.thinking,
@@ -60,24 +52,26 @@ async def start_node(payload: StartNodePayload):
     )
 
     if server.is_port_in_use():
-        return {"status": "active", "message": f"Inference process already online at port {target_port}."}
+        return {"status": "active", "message": f"Inference process already online at {payload.host}:{payload.port}."}
 
-    if server.start():
-        return {"status": "success", "message": f"Engine {payload.model_type.upper()} spawned successfully on port {target_port}."}
-    else:
-        raise HTTPException(status_code=500, detail="Hardware optimization binary timeout.")
-
+    # 3. Safely catch any internal binary errors
+    try:
+        if server.start():
+            return {"status": "success", "message": f"Engine {payload.model_type.upper()} spawned successfully on {payload.host}:{payload.port}."}
+        else:
+            raise HTTPException(status_code=500, detail="Hardware optimization binary timeout.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/node/stop")
-async def stop_node(port: int):
-    server = LlamaServer(port=port)
+async def stop_node(port: int, host: str = "127.0.0.1"):
+    server = LlamaServer(port=port, host=host)
     server.stop()
     log_file = Path(__file__).resolve().parent / "logs" / f"server_{port}.log"
     if log_file.exists():
         try: log_file.unlink()
         except: pass
     return {"status": "stopped", "message": f"Server process on port {port} halted cleanly."}
-
 
 @app.get("/api/node/logs")
 async def fetch_logs(port: int, max_lines: int = 6):
@@ -94,7 +88,6 @@ async def fetch_logs(port: int, max_lines: int = 6):
     except Exception as e:
         return {"logs": f"[error parsing remote logs: {str(e)}]"}
 
-
 if __name__ == "__main__":
     import uvicorn
     parser = argparse.ArgumentParser()
@@ -102,5 +95,4 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, default=50000)
     args = parser.parse_args()
     
-    # Spin up our standard web server framework cleanly
     uvicorn.run("main:app", host=args.host, port=args.port, reload=False)
