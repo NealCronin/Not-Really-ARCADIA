@@ -129,7 +129,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # ==============================================================================
 # Custom Drone Heatmap External Path Configurations
 # ==============================================================================
-from pathlib import Path
 
 # Points dynamically to /Users/neal/Documents/drone_heatmap
 DRONE_CODE_DIR = BASE_DIR / "pipeline" / "drone_heatmap"

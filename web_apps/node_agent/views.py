@@ -97,10 +97,6 @@ def host_dashboard(request):
         "active_daemon": active_daemon
     })
 
-    return render(request, "node_agent/dashboard.html", {
-        "active_daemon": active_daemon
-    })
-
 def stop_daemon_ui(request, port):
     """Statelessly hunts down and terminates a process by its port or PID."""
     daemon = ActiveDaemon.objects.filter(port=port).first()

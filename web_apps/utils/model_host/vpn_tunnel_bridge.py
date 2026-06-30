@@ -43,7 +43,7 @@ class VPNTunnelBridge:
         remote_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             remote_socket.connect((self.remote_host, self.remote_port))
-            self.log(f"Tunnel routing secured ➡️ [{self.remote_host}]:{self.remote_port}")
+            self.log(f"Tunnel routing secured [{self.remote_host}]:{self.remote_port}")
         except Exception as e:
             self.log(f"Tunnel routing link failed: {e}")
             client_socket.close()
