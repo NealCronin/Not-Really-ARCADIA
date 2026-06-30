@@ -9,9 +9,12 @@ from django.contrib import messages
 from django.http import JsonResponse
 
 from web_apps.utils.model_host.vpn_tunnel_bridge import VPNTunnelBridge
+from web_apps.utils.model_host.lm_server_helper import LlamaServer
 
 project_root = Path(__file__).resolve().parent.parent.parent
 config_path = project_root / "pipeline" / "drone_heatmap" / "config" / "lm_config.json"
+logs_dir = project_root / "pipeline" / "drone_heatmap" / "logs"
+logs_dir.mkdir(parents=True, exist_ok=True)
 
 if not hasattr(sys, '_active_client_bridges'): sys._active_client_bridges = {}
 if not hasattr(sys, '_active_local_procs'): sys._active_local_procs = {}
@@ -19,14 +22,19 @@ if not hasattr(sys, '_active_local_procs'): sys._active_local_procs = {}
 active_bridges = sys._active_client_bridges
 active_local_procs = sys._active_local_procs
 
+_sam3_server_thread = None
+_sam3_uvicorn_process = None
+
+
 def load_config():
     if not config_path.exists(): return {}
     with open(config_path, 'r') as f: return json.load(f)
 
+
 def save_config(data):
-    # FIXED: This forces the OS to create the folder if it doesn't exist!
     config_path.parent.mkdir(parents=True, exist_ok=True)
     with open(config_path, 'w') as f: json.dump(data, f, indent=4)
+
 
 def get_node_agent_url(model_config, env_config):
     host_ip = model_config.get("vpn_host") if model_config.get("use_vpn_tunnel") else model_config.get("host")
@@ -101,15 +109,25 @@ def manage_models(request):
                 url = f"{get_node_agent_url(target_config, config.get('ENV_SETTINGS', {}))}/logs?port={target_config.get('port')}&max_lines=4"
                 res = requests.get(url, timeout=2)
                 return res.json().get("logs", "No logs.")
-            else: return "Local execution active." if model_type in active_local_procs else "Offline."
-        except: return "Connection error / Offline."
+            else:
+                if model_type == "sam3":
+                    return "SAM3 execution active." if "sam3" in active_local_procs else "Offline."
+                return "Local execution active." if model_type in active_local_procs else "Offline."
+        except Exception as e:
+            return f"Connection error: {str(e)}"
 
-    context = {'config': config, 'vlm_logs': get_preview_log('vlm'), 'llm_logs': get_preview_log('llm'), 'conv_logs': get_preview_log('conv')}
+    context = {
+        'config': config,
+        'vlm_logs': get_preview_log('vlm'),
+        'llm_logs': get_preview_log('llm'),
+        'conv_logs': get_preview_log('conv'),
+        'sam3_logs': get_preview_log('sam3')
+    }
     return render(request, "infrastructure_manager/manage_models.html", context)
 
 def control_model(request, model_type, action):
     config = load_config()
-    key = f"{model_type.upper()}_CONFIG" if model_type != "sam3" else "SAM3_CONFIG"
+    key = f"{model_type.upper()}_CONFIG"
     if key not in config:
         messages.error(request, f"Unknown model config: {model_type}")
         return redirect('manage_models')
@@ -163,7 +181,8 @@ def control_model(request, model_type, action):
                 return redirect('manage_models')
 
             if model_type in active_bridges: active_bridges[model_type].stop()
-            bridge = VPNTunnelBridge(local_host, local_port, remote_host, local_port)
+            remote_port = model_config.get("port", 8080)
+            bridge = VPNTunnelBridge(local_host, local_port, remote_host, remote_port)
             if bridge.start():
                 active_bridges[model_type] = bridge
                 messages.success(request, f"{model_type.upper()} started remotely. Bridge secured.")
@@ -171,7 +190,70 @@ def control_model(request, model_type, action):
                 messages.error(request, f"Remote started, but local Bridge Proxy failed to bind.")
 
         elif mode == "local":
-            messages.info(request, "Local orchestration is under construction.")
+            if model_type == "sam3":
+                global _sam3_server_thread, _sam3_uvicorn_process
+                if "sam3" in active_local_procs:
+                    messages.warning(request, f"SAM3 is already running on port {local_port}.")
+                    return redirect('manage_models')
+                try:
+                    _sam3_uvicorn_process = subprocess.Popen(
+                        [sys.executable, "-m", "uvicorn", "sam3_server:app", "--host", local_host, "--port", str(local_port)],
+                        cwd=str(project_root / "web_apps" / "utils" / "model_host"),
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE
+                    )
+                    active_local_procs["sam3"] = {"process": _sam3_uvicorn_process, "port": local_port, "type": "sam3"}
+                    messages.success(request, f"SAM3 started successfully on {local_host}:{local_port}.")
+                except Exception as e:
+                    messages.error(request, f"Failed to start SAM3: {str(e)}")
+            else:
+                if model_type in active_local_procs:
+                    messages.warning(request, f"{model_type.upper()} is already running on port {local_port}.")
+                    return redirect('manage_models')
+                hf_repo = model_config.get("hf_repo", "")
+                hf_file = model_config.get("hf_file", "")
+                if not hf_repo or not hf_file:
+                    messages.error(request, f"{model_type.upper()} requires Hugging Face repo and file to be configured for local mode.")
+                    return redirect('manage_models')
+                try:
+                    server = LlamaServer(
+                        host=local_host,
+                        port=local_port,
+                        n_gpu_layers=model_config.get("n_gpu_layers", -1),
+                        ctx_size=model_config.get("ctx_size", 2048),
+                        cpu_moe=model_config.get("cpu_moe", 0),
+                        flash_attn=model_config.get("flash_attn", False),
+                        cache_type_k=model_config.get("cache_type_k", ""),
+                        cache_type_v=model_config.get("cache_type_v", ""),
+                        spec_type=model_config.get("spec_type", ""),
+                        spec_draft_n_max=model_config.get("spec_draft_n_max", 0),
+                        spec_draft_p_min=model_config.get("spec_draft_p_min", 0.0),
+                        spec_type_secondary=model_config.get("spec_type_secondary", ""),
+                        spec_ngram_mod_n_match=model_config.get("spec_ngram_mod_n_match", 0),
+                        jinja=model_config.get("jinja", False),
+                        chat_template_kwargs=model_config.get("chat_template_kwargs", ""),
+                        reasoning_budget=model_config.get("reasoning_budget", 0),
+                        reasoning_budget_message=model_config.get("reasoning_budget_message", ""),
+                        temperature=model_config.get("temperature"),
+                        top_p=model_config.get("top_p"),
+                        min_p=model_config.get("min_p"),
+                        top_k=model_config.get("top_k"),
+                        presence_penalty=model_config.get("presence_penalty"),
+                        repeat_penalty=model_config.get("repeat_penalty"),
+                        hf_repo=hf_repo,
+                        hf_file=hf_file,
+                        hf_mmproj=model_config.get("hf_mmproj", ""),
+                        log_dir=str(logs_dir)
+                    )
+                    if server.start(timeout=45):
+                        active_local_procs[model_type] = server
+                        messages.success(request, f"{model_type.upper()} started successfully on {local_host}:{local_port}.")
+                    else:
+                        messages.error(request, f"Failed to start {model_type.upper()}: server did not respond in time.")
+                except ValueError as e:
+                    messages.error(request, str(e))
+                except Exception as e:
+                    messages.error(request, f"Failed to start {model_type.upper()}: {str(e)}")
 
     elif action == "stop":
         if mode == "remote":
@@ -182,8 +264,36 @@ def control_model(request, model_type, action):
             try:
                 requests.post(f"{node_url}/stop?port={local_port}", timeout=5)
                 messages.success(request, f"{model_type.upper()} shut down remotely and bridge closed.")
-            except:
+            except Exception:
                 messages.warning(request, f"Local bridge closed, but could not reach remote node.")
+        elif mode == "local":
+            if model_type == "sam3":
+                global _sam3_server_thread, _sam3_uvicorn_process
+                if "sam3" in active_local_procs:
+                    try:
+                        if _sam3_uvicorn_process:
+                            _sam3_uvicorn_process.terminate()
+                            _sam3_uvicorn_process.wait(timeout=5)
+                        del active_local_procs["sam3"]
+                        messages.success(request, f"SAM3 shut down successfully.")
+                    except Exception as e:
+                        messages.error(request, f"Error stopping SAM3: {str(e)}")
+                        if "sam3" in active_local_procs:
+                            del active_local_procs["sam3"]
+                else:
+                    messages.warning(request, "SAM3 was not running.")
+            else:
+                if model_type in active_local_procs:
+                    try:
+                        active_local_procs[model_type].stop()
+                        del active_local_procs[model_type]
+                        messages.success(request, f"{model_type.upper()} stopped successfully.")
+                    except Exception as e:
+                        messages.error(request, f"Error stopping {model_type.upper()}: {str(e)}")
+                        if model_type in active_local_procs:
+                            del active_local_procs[model_type]
+                else:
+                    messages.warning(request, f"{model_type.upper()} was not running.")
     return redirect('manage_models')
 
 def view_terminal(request, model_type):
@@ -203,13 +313,204 @@ def view_terminal(request, model_type):
         except Exception as e:
             log_content = f"Network interruption. Cannot reach node agent.\nError: {e}"
     else:
-        log_content = "[Local Diagnostic Stream currently unlinked in UI]"
-        is_online = True if model_type in active_local_procs else False
+        port = model_config.get("port", 8080)
+        if model_type == "sam3":
+            if "sam3" in active_local_procs:
+                is_online = True
+                proc_info = active_local_procs["sam3"]
+                if isinstance(proc_info, dict) and "process" in proc_info:
+                    log_file = logs_dir / f"sam3_{port}.log"
+                    if log_file.exists():
+                        try:
+                            with open(log_file, 'r') as f:
+                                lines = f.readlines()
+                                filtered = [l for l in lines if "download" not in l.lower() and "gib" not in l.lower() and "mib" not in l.lower()]
+                                log_content = "".join(filtered[-100:]) if filtered else "No log data available."
+                        except Exception as e:
+                            log_content = f"Error reading log: {e}"
+                    else:
+                        log_content = "Waiting for startup..."
+                else:
+                    log_content = "Waiting for startup..."
+            else:
+                is_online = False
+                log_content = "Offline."
+        else:
+            if model_type in active_local_procs:
+                is_online = True
+                server = active_local_procs[model_type]
+                log_file = logs_dir / f"server_{port}.log"
+                if log_file.exists():
+                    try:
+                        with open(log_file, 'r') as f:
+                            lines = f.readlines()
+                            filtered = [l for l in lines if "download" not in l.lower() and "gib" not in l.lower() and "mib" not in l.lower()]
+                            log_content = "".join(filtered[-100:]) if filtered else "No log data available."
+                    except Exception as e:
+                        log_content = f"Error reading log: {e}"
+                else:
+                    log_content = "Waiting for startup..."
+            else:
+                is_online = False
+                log_content = "Offline."
 
     context = {'model_name': model_type.upper(), 'port': model_config.get("port", "N/A"), 'is_online': is_online, 'log_content': log_content}
     return render(request, "infrastructure_manager/terminal.html", context)
 
-def browse_local_api(request): return JsonResponse({"success": False, "message": "Native file browser implementation required."})
+def browse_local_api(request):
+    if sys.platform == "darwin":
+        try:
+            script = '''
+            tell application "Finder"
+                set chosen_folder to choose folder with prompt "Select dataset directory"
+                POSIX path of chosen_folder
+            end tell
+            '''
+            result = subprocess.check_output(["osascript", "-e", script], stderr=subprocess.PIPE)
+            path = result.decode().strip()
+            if path:
+                return JsonResponse({"success": True, "path": path, "basename": os.path.basename(path)})
+            else:
+                return JsonResponse({"success": False, "message": "Folder selection cancelled."})
+        except subprocess.CalledProcessError as e:
+            return JsonResponse({"success": False, "message": "Selection cancelled or script error."})
+    elif sys.platform.startswith("linux"):
+        try:
+            result = subprocess.check_output(["zenity", "--file-selection", "--directory"], stderr=subprocess.PIPE)
+            path = result.decode().strip()
+            if path:
+                return JsonResponse({"success": True, "path": path, "basename": os.path.basename(path)})
+            else:
+                return JsonResponse({"success": False, "message": "Folder selection cancelled."})
+        except subprocess.CalledProcessError as e:
+            return JsonResponse({"success": False, "message": "Selection cancelled or zenity not available."})
+    elif sys.platform == "win32":
+        try:
+            script = '''
+            Add-Type -AssemblyName System.Windows.Forms
+            $folder = New-Object System.Windows.Forms.FolderBrowserDialog
+            $folder.Description = "Select dataset directory"
+            $folder.ShowNewFolderButton = $false
+            if ($folder.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                $folder.SelectedPath
+            }
+            '''
+            result = subprocess.check_output(["powershell", "-Command", script], stderr=subprocess.PIPE)
+            path = result.decode().strip()
+            if path:
+                return JsonResponse({"success": True, "path": path, "basename": os.path.basename(path)})
+            else:
+                return JsonResponse({"success": False, "message": "Folder selection cancelled."})
+        except subprocess.CalledProcessError as e:
+            return JsonResponse({"success": False, "message": "Selection cancelled or PowerShell not available."})
+    else:
+        return JsonResponse({"success": False, "message": "Native file browser not supported on this platform."})
+
+
 def restore_defaults(request):
-    messages.info(request, "Defaults restored.")
+    default_config = {
+        "ENV_SETTINGS": {
+            "DATASET_ROOT": "",
+            "INSTRUCTION_PORT": 50000
+        },
+        "VLM_CONFIG": {
+            "mode": "local",
+            "host": "127.0.0.1",
+            "port": 8080,
+            "use_vpn_tunnel": False,
+            "vpn_host": "",
+            "hf_repo": "",
+            "hf_file": "",
+            "hf_mmproj": "",
+            "n_gpu_layers": -1,
+            "ctx_size": 2048,
+            "cpu_moe": 0,
+            "flash_attn": False,
+            "cache_type_k": "",
+            "cache_type_v": "",
+            "spec_type": "",
+            "spec_draft_n_max": 0,
+            "spec_draft_p_min": 0.0,
+            "spec_type_secondary": "",
+            "spec_ngram_mod_n_match": 0,
+            "jinja": False,
+            "chat_template_kwargs": "",
+            "reasoning_budget": 0,
+            "reasoning_budget_message": "",
+            "temperature": 0.1,
+            "min_p": 0.05,
+            "top_k": 40,
+            "top_p": 0.95,
+            "presence_penalty": 0.0
+        },
+        "LLM_CONFIG": {
+            "mode": "local",
+            "host": "127.0.0.1",
+            "port": 8081,
+            "use_vpn_tunnel": False,
+            "vpn_host": "",
+            "hf_repo": "",
+            "hf_file": "",
+            "hf_mmproj": "",
+            "n_gpu_layers": -1,
+            "ctx_size": 2048,
+            "cpu_moe": 0,
+            "flash_attn": False,
+            "cache_type_k": "",
+            "cache_type_v": "",
+            "spec_type": "",
+            "spec_draft_n_max": 0,
+            "spec_draft_p_min": 0.0,
+            "spec_type_secondary": "",
+            "spec_ngram_mod_n_match": 0,
+            "jinja": False,
+            "chat_template_kwargs": "",
+            "reasoning_budget": 0,
+            "reasoning_budget_message": "",
+            "temperature": 0.1,
+            "min_p": 0.05,
+            "top_k": 40,
+            "top_p": 0.95,
+            "presence_penalty": 0.0
+        },
+        "CONV_LLM_CONFIG": {
+            "mode": "local",
+            "host": "127.0.0.1",
+            "port": 8082,
+            "use_vpn_tunnel": False,
+            "vpn_host": "",
+            "hf_repo": "",
+            "hf_file": "",
+            "hf_mmproj": "",
+            "n_gpu_layers": -1,
+            "ctx_size": 2048,
+            "cpu_moe": 0,
+            "flash_attn": False,
+            "cache_type_k": "",
+            "cache_type_v": "",
+            "spec_type": "",
+            "spec_draft_n_max": 0,
+            "spec_draft_p_min": 0.0,
+            "spec_type_secondary": "",
+            "spec_ngram_mod_n_match": 0,
+            "jinja": False,
+            "chat_template_kwargs": "",
+            "reasoning_budget": 0,
+            "reasoning_budget_message": "",
+            "temperature": 0.1,
+            "min_p": 0.05,
+            "top_k": 40,
+            "top_p": 0.95,
+            "presence_penalty": 0.0
+        },
+        "SAM3_CONFIG": {
+            "mode": "local",
+            "host": "127.0.0.1",
+            "port": 8701,
+            "use_vpn_tunnel": False,
+            "vpn_host": ""
+        }
+    }
+    save_config(default_config)
+    messages.success(request, "Configuration restored to defaults.")
     return redirect('config_page')

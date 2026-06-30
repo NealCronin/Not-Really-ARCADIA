@@ -36,7 +36,7 @@ class LlamaServer:
         hf_repo: str = None,
         hf_file: str = None,
         hf_mmproj: str = None,
-        log_dir: str = "/Users/neal/Documents/UI Interface/pipeline/drone_heatmap/logs"
+        log_dir: str = None
     ):
         self.model_path = model_path
         self.host = host.replace("http://", "").replace("https://", "").split("/")[0] if host else "127.0.0.1"
@@ -75,8 +75,12 @@ class LlamaServer:
     def is_port_in_use(self) -> bool:
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(1.0)
                 return s.connect_ex((self.host, self.port)) == 0
-        except Exception as e: return False
+        except socket.error:
+            return False
+        except Exception:
+            return False
 
     def start(self, timeout: int = 45) -> bool:
         if self.is_port_in_use(): return True
@@ -121,23 +125,32 @@ class LlamaServer:
         if self.presence_penalty is not None: cmd.extend(["--presence-penalty", str(self.presence_penalty)])
         if self.repeat_penalty is not None: cmd.extend(["--repeat-penalty", str(self.repeat_penalty)])
 
-        os.makedirs(self.log_dir, exist_ok=True)
-        log_path = os.path.join(self.log_dir, f"server_{self.port}.log")
+        os.makedirs(self.log_dir, exist_ok=True) if self.log_dir else None
+        log_path = os.path.join(self.log_dir, f"server_{self.port}.log") if self.log_dir else None
 
         if sys.platform == "win32":
-            log_path = os.path.abspath(log_path)
-            cmd_parts = [f'"{arg}"' if " " in arg else arg for arg in cmd]
-            raw_cmd = " ".join(cmd_parts)
-            command_string = f'cmd /k "{raw_cmd}"'
-            subprocess.Popen(command_string, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            if log_path:
+                log_path = os.path.abspath(log_path)
+                cmd_parts = [f'"{arg}"' if " " in arg else arg for arg in cmd]
+                raw_cmd = " ".join(cmd_parts)
+                command_string = f'cmd /k "{raw_cmd}"'
+                subprocess.Popen(command_string, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            else:
+                subprocess.Popen(cmd, creationflags=subprocess.CREATE_NEW_CONSOLE)
         elif sys.platform.startswith("linux"):
-            bash_cmd = ["bash", "-c", " ".join(f'"{arg}"' for arg in cmd) + f" 2>&1 | tee '{log_path}'; exec bash"]
-            subprocess.Popen(["gnome-terminal", "--"] + bash_cmd)
+            if log_path:
+                bash_cmd = ["bash", "-c", " ".join(f'"{arg}"' for arg in cmd) + f" 2>&1 | tee '{log_path}'; exec bash"]
+                subprocess.Popen(["gnome-terminal", "--"] + bash_cmd)
+            else:
+                subprocess.Popen(["gnome-terminal", "--"] + cmd)
         else: 
-            cmd_str = " ".join(f"'{arg}'" for arg in cmd) + f" 2>&1 | tee '{log_path}'"
-            escaped_cmd_str = cmd_str.replace('"', '\\"')
-            applescript_cmd = f'tell application "Terminal" to do script "{escaped_cmd_str}"'
-            subprocess.Popen(["osascript", "-e", applescript_cmd])
+            if log_path:
+                cmd_str = " ".join(f"'{arg}'" for arg in cmd) + f" 2>&1 | tee '{log_path}'"
+                escaped_cmd_str = cmd_str.replace('"', '\\"')
+                applescript_cmd = f'tell application "Terminal" to do script "{escaped_cmd_str}"'
+                subprocess.Popen(["osascript", "-e", applescript_cmd])
+            else:
+                subprocess.Popen(["open", "-a", "Terminal.app"] + cmd)
 
         start_time = time.time()
         while time.time() - start_time < timeout:

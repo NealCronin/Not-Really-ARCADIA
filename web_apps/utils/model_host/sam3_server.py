@@ -17,16 +17,30 @@ app = FastAPI(title="Ultralytics SAM 3 GPU Inference Server")
 project_root = Path(__file__).resolve().parent.parent.parent.parent
 model_path = project_root / "pipeline" / "drone_heatmap" / "models" / "sam3.pt"
 
+# Try CUDA first, fall back to CPU
+device = "cuda"
+try:
+    import torch
+    if not torch.cuda.is_available():
+        device = "cpu"
+except ImportError:
+    device = "cpu"
+
 overrides = {
     "conf": 0.25,
     "task": "segment",
     "mode": "predict",
     "model": str(model_path),
-    "device": "cuda",
-    "half": True,
+    "device": device,
+    "half": device == "cuda",
     "save": False,
 }
-predictor = SAM3SemanticPredictor(overrides=overrides)
+
+try:
+    predictor = SAM3SemanticPredictor(overrides=overrides)
+except Exception as e:
+    print(f"⚠️ [SAM 3] Warning: Failed to initialize predictor: {e}")
+    predictor = None
 
 class SAM3InferenceRequest(BaseModel):
     image: str
@@ -36,6 +50,8 @@ class SAM3InferenceRequest(BaseModel):
 @app.post("/v1/predict")
 async def predict_sam3(req: SAM3InferenceRequest):
     start_time = time.perf_counter()
+    if predictor is None:
+        raise HTTPException(status_code=503, detail="SAM3 predictor not initialized. Check model file exists.")
     try:
         image = req.image
         prompts = req.prompts
@@ -80,7 +96,12 @@ async def predict_sam3(req: SAM3InferenceRequest):
         return {"status": "success", "predictions": serialized_predictions}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Inference Failure: {str(e)}")
+        print(f"❌ [SAM 3] Inference error: {e}")
+        raise HTTPException(status_code=500, detail="Inference failed. Check model and input.")
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "model_loaded": predictor is not None}
 
 if __name__ == "__main__":
     import uvicorn
